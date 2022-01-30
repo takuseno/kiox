@@ -36,9 +36,9 @@ jobs:
       - name: Linter
         run: |
           ./scripts/lint
-    #- name: Upload coverage
-    #  if: ${{ matrix.os == 'ubuntu-20.04' }}
-    #  env:
-    #    CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-    #  run: |
-    #    bash <(curl -s https://codecov.io/bash)
+      - name: Upload coverage
+        if: ${{ matrix.os == 'ubuntu-20.04' }}
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          bash <(curl -s https://codecov.io/bash)
