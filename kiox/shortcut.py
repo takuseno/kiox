@@ -7,14 +7,30 @@ from .transition_factory import (
 )
 
 
-def create_simple_kiox(maxlen: int) -> Kiox:
+def create_simple_kiox(
+    maxlen: int, n_steps: int = 1, gamma: float = 0.99
+) -> Kiox:
     step_buffer = FIFOStepBuffer(maxlen)
     transition_buffer = FIFOTransitionBuffer(maxlen)
-    return Kiox(step_buffer, transition_buffer, SimpleTransitionFactory())
+    return Kiox(
+        step_buffer,
+        transition_buffer,
+        SimpleTransitionFactory(),
+        n_steps=n_steps,
+        gamma=gamma,
+    )
 
 
-def create_frame_stack_kiox(maxlen: int, n_frames: int) -> Kiox:
+def create_frame_stack_kiox(
+    maxlen: int, n_frames: int, n_steps: int = 1, gamma: float = 0.99
+) -> Kiox:
     step_buffer = FIFOStepBuffer(maxlen + n_frames)
     transition_buffer = FIFOTransitionBuffer(maxlen)
     transition_factory = FrameStackTransitionFactory(n_frames)
-    return Kiox(step_buffer, transition_buffer, transition_factory)
+    return Kiox(
+        step_buffer,
+        transition_buffer,
+        transition_factory,
+        n_steps=n_steps,
+        gamma=gamma,
+    )

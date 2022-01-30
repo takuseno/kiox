@@ -22,6 +22,7 @@ class Kiox:
         transition_buffer: TransitionBuffer,
         transition_factory: TransitionFactory,
         n_steps: int = 1,
+        gamma: float = 0.99,
     ):
         self._transition_buffer = transition_buffer
         self._step_buffer = step_buffer
@@ -35,6 +36,7 @@ class Kiox:
             transition_buffer=transition_buffer,
             transition_factory=transition_factory,
             n_steps=n_steps,
+            gamma=gamma,
         )
 
     def collect(
