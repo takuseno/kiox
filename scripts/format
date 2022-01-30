@@ -1,0 +1,13 @@
+#!/bin/bash -ex
+
+if [[ -z $CI ]]; then
+  ISORT_ARG=""
+  BLACK_ARG=""
+else
+  ISORT_ARG="--check --diff"
+  BLACK_ARG="--check"
+fi
+
+isort -l 80 --profile black $ISORT_ARG kiox tests
+
+black -l 80 $BLACK_ARG kiox tests

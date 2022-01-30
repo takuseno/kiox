@@ -1,0 +1,7 @@
+#!/bin/bash -eux
+
+pytest --cov-report=xml \
+       --cov=kiox \
+       tests \
+       -p no:warnings \
+       -v
