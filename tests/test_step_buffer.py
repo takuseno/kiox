@@ -83,7 +83,7 @@ def test_episodic_step_buffer():
     # test compute_return
     ret = 0
     for i, step in enumerate(steps[:3]):
-        ret += (0.99 ** i) * step.reward
+        ret += (0.99**i) * step.reward
     assert buffer.compute_return(steps[0].idx, 3, 0.99) == ret
 
     # test clear

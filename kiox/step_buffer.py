@@ -177,7 +177,7 @@ class EpisodicStepBuffer(StepBuffer):
         next_idx = idx
         ret = 0.0
         for i in range(duration):
-            ret += (gamma ** i) * self.get(next_idx).reward
+            ret += (gamma**i) * self.get(next_idx).reward
             if next_idx in self._next_index:
                 next_idx = self._next_index[next_idx]
             else:
