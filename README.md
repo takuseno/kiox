@@ -29,3 +29,10 @@ kiox = create_simple_kiox(1000, n_steps=5, gamma=0.99)
 from kiox.transition_factory import FrameStackTransitionFactory
 kiox = Kiox(FIFOStepBuffer(1000), FIFOTransitionBuffer(1000), FrameStackTransitionFactory(n_frames=4))
 ```
+
+## TODO
+This project is in progress.
+
+- [ ] gRPC server/client
+- [ ] Documentation
+- [ ] PyPi upload
