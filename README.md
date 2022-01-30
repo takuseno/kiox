@@ -28,6 +28,15 @@ kiox = create_simple_kiox(1000, n_steps=5, gamma=0.99)
 # frame stacking
 from kiox.transition_factory import FrameStackTransitionFactory
 kiox = Kiox(FIFOStepBuffer(1000), FIFOTransitionBuffer(1000), FrameStackTransitionFactory(n_frames=4))
+
+# from offline data
+from kiox.offline import create_simple_kiox_from_data
+kiox = create_simple_kiox_from_data(
+  observations=<observations>,
+  actions=<actions>,
+  rewards=<rewards>,
+  terminals=<terminals>,
+)
 ```
 
 ## TODO
