@@ -1,4 +1,4 @@
-from typing import IO, Union
+from typing import BinaryIO, Union
 
 from .batch_factory import Batch, BatchFactory
 from .io import dump_memory, load_memory
@@ -62,10 +62,10 @@ class Kiox:
         self._transition_buffer.copy_from(kiox.transition_buffer)
         self._step_buffer.copy_from(kiox.step_buffer)
 
-    def save(self, f: IO) -> None:
+    def save(self, f: BinaryIO) -> None:
         dump_memory(f, self._step_buffer)
 
-    def load(self, f: IO) -> None:
+    def load(self, f: BinaryIO) -> None:
         load_memory(f, self._step_collector)
 
     @property

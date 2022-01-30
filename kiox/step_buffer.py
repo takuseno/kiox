@@ -43,7 +43,7 @@ class UnlimitedStepBuffer(StepBuffer):
     _buffer: List[Step]
     _index: Dict[int, int]
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._buffer = []
         self._index = {}
 
@@ -80,7 +80,7 @@ class FIFOStepBuffer(StepBuffer):
     _index: Dict[int, int]
     _cursor: int
 
-    def __init__(self, maxlen: int):
+    def __init__(self, maxlen: int) -> None:
         self._maxlen = maxlen
         self._buffer = []
         self._index = {}
@@ -131,7 +131,7 @@ class EpisodicStepBuffer(StepBuffer):
     _prev_step: Optional[Step]
     _cursor: int
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._buffer = []
         self._index = {}
         self._prev_index = {}

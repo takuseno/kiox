@@ -1,13 +1,12 @@
-from typing import IO
+from typing import BinaryIO
 
 import h5py
-import numpy as np
 
 from .step_buffer import StepBuffer
 from .step_collector import StepCollector
 
 
-def dump_memory(f: IO, step_buffer: StepBuffer) -> None:
+def dump_memory(f: BinaryIO, step_buffer: StepBuffer) -> None:
     # sort steps by its id
     steps = step_buffer.steps
     sorted_steps = sorted(steps, key=lambda s: s.idx)
@@ -30,17 +29,19 @@ def dump_memory(f: IO, step_buffer: StepBuffer) -> None:
         h5.flush()
 
 
-def load_memory(f: IO, step_collector: StepCollector) -> None:
+def load_memory(f: BinaryIO, step_collector: StepCollector) -> None:
     with h5py.File(f, "r") as h5:
         observations = h5["observations"][()]
         actions = h5["actions"][()]
         rewards = h5["rewards"][()]
         terminals = h5["terminals"][()]
 
-    for i in range(len(observations)):
+    for observation, action, reward, terminal in zip(
+        observations, actions, rewards, terminals
+    ):
         step_collector.collect(
-            observation=observations[i],
-            action=actions[i],
-            reward=rewards[i],
-            terminal=terminals[i],
+            observation=observation,
+            action=action,
+            reward=reward,
+            terminal=terminal,
         )

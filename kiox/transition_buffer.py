@@ -1,5 +1,5 @@
 from collections import deque
-from typing import IO, Deque, List, Sequence
+from typing import Deque, List, Sequence
 
 import numpy as np
 from typing_extensions import Protocol
@@ -32,7 +32,7 @@ class TransitionBuffer(Protocol):
 class UnlimitedTransitionBuffer(TransitionBuffer):
     _buffer: List[LazyTransition]
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._buffer = []
 
     def append(self, lazy_transition: LazyTransition) -> None:
@@ -42,7 +42,7 @@ class UnlimitedTransitionBuffer(TransitionBuffer):
         return self._buffer[index]
 
     def sample(self, step_buffer: StepBuffer) -> Transition:
-        index = np.random.randint(len(self._buffer))
+        index = int(np.random.randint(len(self._buffer)))
         return self._buffer[index].create(step_buffer)
 
     def size(self) -> int:
@@ -60,7 +60,7 @@ class UnlimitedTransitionBuffer(TransitionBuffer):
 class FIFOTransitionBuffer(TransitionBuffer):
     _buffer: Deque[LazyTransition]
 
-    def __init__(self, maxlen: int):
+    def __init__(self, maxlen: int) -> None:
         self._buffer = deque(maxlen=maxlen)
 
     def append(self, lazy_transition: LazyTransition) -> None:
@@ -70,7 +70,7 @@ class FIFOTransitionBuffer(TransitionBuffer):
         return self._buffer[index]
 
     def sample(self, step_buffer: StepBuffer) -> Transition:
-        index = np.random.randint(len(self._buffer))
+        index = int(np.random.randint(len(self._buffer)))
         return self._buffer[index].create(step_buffer)
 
     def size(self) -> int:
