@@ -1,5 +1,7 @@
 # kiox: A composable experience replay buffer library
 [![test](https://github.com/takuseno/kiox/actions/workflows/test.yml/badge.svg)](https://github.com/takuseno/kiox/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/takuseno/kiox/branch/master/graph/badge.svg?token=sI8AYW2kYp)](https://codecov.io/gh/takuseno/kiox)
+[![Maintainability](https://api.codeclimate.com/v1/badges/f2f0d2bde462dbb37767/maintainability)](https://codeclimate.com/github/takuseno/kiox/maintainability)
 ![MIT](https://img.shields.io/badge/license-MIT-blue)
 
 kiox is a composable experience replay buffer library.
