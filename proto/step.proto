@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+message Shape {
+  repeated int32 dim = 1;
+}
+
+message Observation {
+  int32 length = 1;
+  repeated Shape shape = 2;
+  repeated bytes data = 3;
+}
+
+message ContinuousAction {
+  Shape shape = 1;
+  repeated float data = 2;
+}
+
+message DiscreteAction {
+  int32 data = 1;
+}
+
+message StepProto {
+  Observation observation = 1;
+  oneof action {
+    ContinuousAction continuous_action = 2;
+    DiscreteAction discrete_action = 3;
+  }
+  float reward = 4;
+  bool terminal = 5;
+  bool timeout = 6;
+}
+
+message StepReply {
+  string status = 1;
+}
+
+service StepService {
+  rpc Send(StepProto) returns (StepReply);
+}

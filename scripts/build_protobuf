@@ -1,0 +1,8 @@
+#!/bin/bash -eux
+
+python \
+  -m grpc_tools.protoc \
+ -I=proto \
+ --python_out=kiox/proto \
+ --grpc_python_out=kiox/proto \
+ proto/step.proto
