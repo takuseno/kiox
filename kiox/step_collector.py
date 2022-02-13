@@ -1,3 +1,5 @@
+from typing import Optional
+
 from .step_buffer import EpisodicStepBuffer, Step, StepBuffer
 from .transition_buffer import TransitionBuffer
 from .transition_factory import TransitionFactory
@@ -35,6 +37,7 @@ class StepCollector:
         action: Action,
         reward: float,
         terminal: float,
+        timeout: Optional[bool] = None,
     ) -> None:
         step = Step(
             idx=self._idx,
@@ -73,6 +76,9 @@ class StepCollector:
                 )
                 self._transition_buffer.append(transition)
 
+            self.clip_episode()
+
+        if timeout:
             self.clip_episode()
 
     def clip_episode(self) -> None:

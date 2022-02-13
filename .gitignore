@@ -4,4 +4,4 @@ coverage.xml
 .coverage
 kiox.egg-info
 .python-version
-kiox/proto
+kiox/distributed/proto

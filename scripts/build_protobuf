@@ -3,6 +3,6 @@
 python \
   -m grpc_tools.protoc \
  -I=proto \
- --python_out=kiox/proto \
- --grpc_python_out=kiox/proto \
+ --python_out=kiox/distributed/proto \
+ --grpc_python_out=kiox/distributed/proto \
  proto/step.proto

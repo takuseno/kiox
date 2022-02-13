@@ -30,7 +30,8 @@ if __name__ == "__main__":
                        "Operating System :: MacOS :: MacOS X"],
           install_requires=["numpy",
                             "h5py",
-                            "typing-extensions"],
+                            "typing-extensions",
+                            "grpcio"],
           packages=find_packages(exclude=["tests*"]),
           python_requires=">=3.7.0",
           zip_safe=True)
