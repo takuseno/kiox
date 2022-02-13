@@ -84,3 +84,4 @@ class StepSender:
 
     def stop(self) -> None:
         self._queue.put(None)
+        self._thread.join()
