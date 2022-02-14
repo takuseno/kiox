@@ -71,8 +71,9 @@ def convert_action_to_proto(
 def convert_proto_to_action(
     action: Union[ContinuousAction, DiscreteAction]
 ) -> ActionType:
-    if isinstance(action, ContinuousAction):
+    # TODO: a little hacky
+    if str(type(action)) == str(type(ContinuousAction())):
         return np.array(action.data, dtype=np.float32)
-    if isinstance(action, DiscreteAction):
+    if str(type(action)) == str(type(DiscreteAction())):
         return int(action.data)
     raise ValueError(f"invalid action type: {type(action)}")

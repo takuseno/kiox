@@ -1,7 +1,11 @@
 #!/bin/bash -eux
 
+mkdir -p test_data
+
 pytest --cov-report=xml \
        --cov=kiox \
        tests \
        -p no:warnings \
        -v
+
+rm -rf test_data

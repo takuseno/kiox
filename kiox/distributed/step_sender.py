@@ -28,7 +28,7 @@ class StepSender:
     def __init__(self, host: str, port: int, rollout_id: int):
         self._queue = Queue()
         self._thread = Thread(
-            target=self._start_thread, args=(host, port, rollout_id)
+            target=self._loop_thread, args=(host, port, rollout_id)
         )
         self._thread.start()
 
@@ -49,7 +49,7 @@ class StepSender:
         )
         self._queue.put(step_data)
 
-    def _start_thread(self, host: str, port: int, rollout_id: int) -> None:
+    def _loop_thread(self, host: str, port: int, rollout_id: int) -> None:
         channel = grpc.insecure_channel(f"{host}:{port}")
         stub = StepServiceStub(channel)
         while True:
