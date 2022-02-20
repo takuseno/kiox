@@ -28,7 +28,9 @@ class StepSender:
     def __init__(self, host: str, port: int, rollout_id: int):
         self._queue = Queue()
         self._thread = Thread(
-            target=self._loop_thread, args=(host, port, rollout_id)
+            target=self._loop_thread,
+            args=(host, port, rollout_id),
+            daemon=True,
         )
         self._thread.start()
 
