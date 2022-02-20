@@ -28,7 +28,7 @@ See an [example](examples/distributed.py).
 
 In actor process:
 ```py
-from kiox.distributed.server import KioxServer
+from kiox.distributed.step_sender import StepSender
 sender = StepSender("localhost", 8000, 1)
 sender.collect(<obsrvation>, <action>, <reward>, <terminal>)
 ```
@@ -36,7 +36,7 @@ sender.collect(<obsrvation>, <action>, <reward>, <terminal>)
 In trainer process:
 ```py
 # trainer process
-from kiox.distributed.step_sender import StepSender
+from kiox.distributed.server import KioxServer
 
 def step_buffer_builder():
     return FIFOStepBuffer(1000)
