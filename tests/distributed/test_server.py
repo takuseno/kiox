@@ -8,11 +8,13 @@ from kiox.distributed.server import (
     COMMAND_GET_STEP_LEN,
     COMMAND_GET_TRANSITION_LEN,
     COMMAND_LOAD,
+    COMMAND_SAMPLE,
     COMMAND_SAVE,
     COMMAND_STOP,
     KioxServer,
     kiox_server_process,
 )
+from kiox.distributed.shared_batch_factory import SharedBatchFactory
 from kiox.distributed.step_sender import StepSender
 from kiox.step_buffer import FIFOStepBuffer
 from kiox.transition_buffer import FIFOTransitionBuffer
@@ -32,12 +34,15 @@ def test_kiox_server_process():
     command_queue = Queue()
     ack_queue = Queue()
 
+    batch_factory = SharedBatchFactory((3, 84, 84), (4,), 1)
+
     # start server
     process = Process(
         target=kiox_server_process,
         args=(
             "localhost",
             8000,
+            batch_factory,
             command_queue,
             ack_queue,
             step_buffer_builder,
@@ -80,6 +85,8 @@ def test_kiox_server_process():
     command_queue.put(COMMAND_GET_TRANSITION_LEN)
     assert int(ack_queue.get()) == 1
 
+    assert os.path.exists("test_data"), "Please make test_data directory."
+
     # check save
     command_queue.put(COMMAND_SAVE)
     command_queue.put(os.path.join("test_data", "kiox.h5"))
@@ -91,6 +98,11 @@ def test_kiox_server_process():
     ack_queue.get()
     command_queue.put(COMMAND_GET_STEP_LEN)
     assert int(ack_queue.get()) == 4
+
+    # check sample
+    command_queue.put(COMMAND_SAMPLE)
+    ack_queue.get()
+    assert np.all(batch_factory.batch.observations != 0.0)
 
     command_queue.put(COMMAND_STOP)
 
@@ -113,6 +125,9 @@ def test_kiox_server():
     server = KioxServer(
         host="localhost",
         port=8000,
+        observation_shape=(3, 84, 84),
+        action_shape=(4,),
+        batch_size=1,
         step_buffer_builder=step_buffer_builder,
         transition_buffer_builder=transition_buffer_builder,
         transition_factory_builder=transition_factory_builder,
@@ -153,6 +168,16 @@ def test_kiox_server():
     # check load
     server.load(os.path.join("test_data", "kiox.h5"))
     assert server.get_step_buffer_size() == 4
+
+    # check sample
+    batch = server.sample()
+    assert batch.observations.shape == (1, 3, 84, 84)
+    assert batch.actions.shape == (1, 4)
+    assert batch.rewards.shape == (1, 1)
+    assert batch.terminals.shape == (1, 1)
+    assert np.all(batch.observations != 0.0)
+    assert np.all(batch.actions != 0.0)
+    assert np.all(batch.rewards != 0.0)
 
     server.stop()
     sender.stop()

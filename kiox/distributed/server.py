@@ -1,6 +1,6 @@
 from concurrent import futures
 from multiprocessing import Process, Queue
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Sequence, Union
 
 import grpc
 
@@ -9,12 +9,14 @@ from kiox.distributed.proto.step_pb2_grpc import (
     add_StepServiceServicer_to_server,
 )
 
+from ..batch_factory import Batch
 from ..io import dump_memory, load_memory
 from ..step_buffer import StepBuffer
 from ..step_collector import StepCollector
 from ..transition_buffer import TransitionBuffer
 from ..transition_factory import TransitionFactory
 from .proto.step_pb2 import StepProto, StepReply
+from .shared_batch_factory import SharedBatchFactory
 from .utility import convert_proto_to_action, convert_proto_to_observation
 
 
@@ -79,6 +81,7 @@ ACK_START = "start"
 ACK_ENDED = "ended"
 ACK_SAVED = "saved"
 ACK_LOADED = "loaded"
+ACK_SAMPLED = "sampled"
 COMMAND_STOP = "stop"
 COMMAND_SAMPLE = "sample"
 COMMAND_GET_STEP_LEN = "get_step_len"
@@ -90,6 +93,7 @@ COMMAND_LOAD = "load"
 def kiox_server_process(
     host: str,
     port: int,
+    batch_factory: SharedBatchFactory,
     command_queue: "Queue[str]",
     ack_queue: "Queue[str]",
     step_buffer_builder: Callable[[], StepBuffer],
@@ -144,6 +148,9 @@ def kiox_server_process(
                 )
                 load_memory(f, step_collector)
             ack_queue.put(ACK_LOADED)
+        elif command == COMMAND_SAMPLE:
+            batch_factory.sample(step_buffer, transition_buffer)
+            ack_queue.put(ACK_SAMPLED)
         else:
             raise ValueError(f"invalid command: {command}")
 
@@ -154,6 +161,7 @@ def kiox_server_process(
 
 
 class KioxServer:
+    _batch_factory: SharedBatchFactory
     _process: Process
     _command_queue: "Queue[str]"
     _ack_queue: "Queue[str]"
@@ -162,6 +170,9 @@ class KioxServer:
         self,
         host: str,
         port: int,
+        observation_shape: Union[Sequence[Sequence[int]], Sequence[int]],
+        action_shape: Sequence[int],
+        batch_size: int,
         step_buffer_builder: Callable[[], StepBuffer],
         transition_buffer_builder: Callable[[], TransitionBuffer],
         transition_factory_builder: Callable[[], TransitionFactory],
@@ -169,6 +180,11 @@ class KioxServer:
         n_steps: int = 1,
         gamma: float = 0.99,
     ) -> None:
+        self._batch_factory = SharedBatchFactory(
+            observation_shape=observation_shape,
+            action_shape=action_shape,
+            batch_size=batch_size,
+        )
         self._command_queue = Queue()
         self._ack_queue = Queue()
         self._process = Process(
@@ -176,6 +192,7 @@ class KioxServer:
             args=(
                 host,
                 port,
+                self._batch_factory,
                 self._command_queue,
                 self._ack_queue,
                 step_buffer_builder,
@@ -185,6 +202,7 @@ class KioxServer:
                 n_steps,
                 gamma,
             ),
+            daemon=True,
         )
 
     def start(self) -> None:
@@ -202,6 +220,11 @@ class KioxServer:
     def get_transition_buffer_size(self) -> int:
         self._command_queue.put(COMMAND_GET_TRANSITION_LEN)
         return int(self._ack_queue.get())
+
+    def sample(self) -> Batch:
+        self._command_queue.put(COMMAND_SAMPLE)
+        self._ack_queue.get()
+        return self._batch_factory.batch
 
     def save(self, path: str) -> None:
         self._command_queue.put(COMMAND_SAVE)
