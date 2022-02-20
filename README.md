@@ -19,18 +19,53 @@ kiox.collect(<obsrvation>, <action>, <reward>, <terminal>)
 
 # sample batch
 batch = kiox.sample(256)
+```
 
-# convenient shortcut
-from kiox.shortcut import create_simple_kiox
-kiox = create_simple_kiox(1000)
 
-# multi-step learning
-kiox = create_simple_kiox(1000, n_steps=5, gamma=0.99)
+## features
+### distributed training
+See an [example](examples/distributed.py).
 
-# frame stacking
-from kiox.transition_factory import FrameStackTransitionFactory
-kiox = Kiox(FIFOStepBuffer(1000), FIFOTransitionBuffer(1000), FrameStackTransitionFactory(n_frames=4))
+In actor process:
+```py
+from kiox.distributed.server import KioxServer
+sender = StepSender("localhost", 8000, 1)
+sender.collect(<obsrvation>, <action>, <reward>, <terminal>)
+```
 
+In trainer process:
+```py
+# trainer process
+from kiox.distributed.step_sender import StepSender
+
+def step_buffer_builder():
+    return FIFOStepBuffer(1000)
+
+def transition_buffer_builder():
+    return FIFOTransitionBuffer(1000)
+
+def transition_factory_builder():
+    return SimpleTransitionFactory()
+
+# setup server
+server = KioxServer(
+    host="localhost",
+    port=8000,
+    observation_shape=(4,),
+    action_shape=(1,),
+    batch_size=8,
+    step_buffer_builder=step_buffer_builder,
+    transition_buffer_builder=transition_buffer_builder,
+    transition_factory_builder=transition_factory_builder,
+)
+server.start()
+
+# sample batch
+batch = server.sample()
+```
+
+### from offline data
+```py
 # from offline data
 from kiox.offline import create_simple_kiox_from_data
 kiox = create_simple_kiox_from_data(
@@ -44,6 +79,6 @@ kiox = create_simple_kiox_from_data(
 ## TODO
 This project is in progress.
 
-- [ ] gRPC server/client
+- [x] gRPC server/client
 - [ ] Documentation
 - [ ] PyPi upload
