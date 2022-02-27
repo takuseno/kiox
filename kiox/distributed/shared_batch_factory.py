@@ -9,7 +9,7 @@ from ..transition_buffer import TransitionBuffer
 from .shared_array import create_shared_array
 
 
-def _create_shared_observation(
+def _create_shared_batch_array(
     batch_size: int, shape: Union[Sequence[Sequence[int]], Sequence[int]]
 ) -> Union[np.ndarray, Sequence[np.ndarray]]:
     if isinstance(shape[0], int):
@@ -20,31 +20,40 @@ def _create_shared_observation(
         ]
 
 
+def _copy_array(
+    dst: Union[Sequence[np.ndarray], np.ndarray],
+    src: Union[Sequence[np.ndarray], np.ndarray],
+) -> None:
+    if isinstance(dst, (list, tuple)):
+        for i in range(len(dst)):
+            np.copyto(dst[i], src[i])
+    else:
+        np.copyto(dst, src)
+
+
 class SharedBatchFactory:
     _batch_size: int
-    _observation_shape: Union[Sequence[Sequence[int]], Sequence[int]]
-    _action_shape: Sequence[int]
     _batch: Batch
 
     def __init__(
         self,
         observation_shape: Union[Sequence[Sequence[int]], Sequence[int]],
-        action_shape: Sequence[int],
+        action_shape: Union[Sequence[Sequence[int]], Sequence[int]],
+        reward_shape: Union[Sequence[Sequence[int]], Sequence[int]],
         batch_size: int,
     ):
         self._batch_size = batch_size
-        self._observation_shape = observation_shape
-        self._action_shape = action_shape
 
         # allocate shared arrays
-        observations = _create_shared_observation(batch_size, observation_shape)
-        actions = create_shared_array((batch_size, *action_shape), np.float32)
-        rewards = create_shared_array((batch_size, 1), np.float32)
-        next_observations = _create_shared_observation(
+        observations = _create_shared_batch_array(batch_size, observation_shape)
+        actions = _create_shared_batch_array(batch_size, action_shape)
+        rewards = _create_shared_batch_array(batch_size, reward_shape)
+        terminals = create_shared_array((batch_size, 1), np.float32)
+        next_observations = _create_shared_batch_array(
             batch_size, observation_shape
         )
-        terminals = create_shared_array((batch_size, 1), np.float32)
         durations = create_shared_array((batch_size, 1), np.float32)
+
         self._batch = Batch(
             observations=observations,
             actions=actions,
@@ -65,18 +74,11 @@ class SharedBatchFactory:
         batch = factory.sample(self._batch_size)
 
         # copy arrays
-        if isinstance(self._batch.observations, list):
-            for i in range(len(self._batch.observations)):
-                np.copyto(self._batch.observations[i], batch.observations[i])
-                np.copyto(
-                    self._batch.next_observations[i], batch.next_observations[i]
-                )
-        else:
-            np.copyto(self._batch.observations, batch.observations)
-            np.copyto(self._batch.next_observations, batch.next_observations)
-        np.copyto(self._batch.actions, batch.actions)
-        np.copyto(self._batch.rewards, batch.rewards)
+        _copy_array(self._batch.observations, batch.observations)
+        _copy_array(self._batch.actions, batch.actions)
+        _copy_array(self._batch.rewards, batch.rewards)
         np.copyto(self._batch.terminals, batch.terminals)
+        _copy_array(self._batch.next_observations, batch.next_observations)
         np.copyto(self._batch.durations, batch.durations)
 
     @property

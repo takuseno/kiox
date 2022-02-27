@@ -2,11 +2,11 @@ from typing import BinaryIO, Union
 
 from .batch_factory import Batch, BatchFactory
 from .io import dump_memory, load_memory
+from .item import Item
 from .step_buffer import StepBuffer
 from .step_collector import StepCollector
 from .transition_buffer import TransitionBuffer
 from .transition_factory import TransitionFactory
-from .types import Action, Observation
 
 
 class Kiox:
@@ -41,9 +41,9 @@ class Kiox:
 
     def collect(
         self,
-        observation: Observation,
-        action: Action,
-        reward: float,
+        observation: Item,
+        action: Item,
+        reward: Item,
         terminal: Union[bool, float],
     ) -> None:
         terminal = float(terminal) if isinstance(terminal, bool) else terminal

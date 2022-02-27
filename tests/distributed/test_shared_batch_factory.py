@@ -16,7 +16,7 @@ def test_shared_batch_factory(observation_shape):
         transition = factory()
         buffer.append(transition)
 
-    batch_factory = SharedBatchFactory(observation_shape, (4,), 32)
+    batch_factory = SharedBatchFactory(observation_shape, (4,), (1,), 32)
 
     init_observations = batch_factory.batch.observations.copy()
     init_next_observations = batch_factory.batch.next_observations.copy()

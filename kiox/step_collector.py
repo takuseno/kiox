@@ -1,9 +1,9 @@
 from typing import Optional
 
+from .item import Item
 from .step_buffer import EpisodicStepBuffer, Step, StepBuffer
 from .transition_buffer import TransitionBuffer
 from .transition_factory import TransitionFactory
-from .types import Action, Observation
 
 
 class StepCollector:
@@ -33,9 +33,9 @@ class StepCollector:
 
     def collect(
         self,
-        observation: Observation,
-        action: Action,
-        reward: float,
+        observation: Item,
+        action: Item,
+        reward: Item,
         terminal: float,
         timeout: Optional[bool] = None,
     ) -> None:

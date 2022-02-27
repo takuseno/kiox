@@ -1,41 +1,22 @@
 import dataclasses
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Optional, Sequence, Union, cast
+from typing import Optional
 
 import numpy as np
 
+from .item import StackedItem, stack_items
 from .step_buffer import StepBuffer
 from .transition_buffer import TransitionBuffer
-from .types import Observation
 
 
 @dataclasses.dataclass(frozen=True)
 class Batch:
-    observations: Union[np.ndarray, Sequence[np.ndarray]]
-    actions: np.ndarray
-    rewards: np.ndarray
-    next_observations: Union[np.ndarray, Sequence[np.ndarray]]
+    observations: StackedItem
+    actions: StackedItem
+    rewards: StackedItem
+    next_observations: StackedItem
     terminals: np.ndarray
     durations: np.ndarray
-
-
-def _stack_observations(
-    observations: Sequence[Observation],
-) -> Union[np.ndarray, Sequence[np.ndarray]]:
-    if isinstance(observations[0], np.ndarray):
-        return np.asarray(
-            np.stack(cast(Sequence[np.ndarray], observations), axis=0),
-            dtype=np.float32,
-        )
-    return [
-        np.asarray(
-            np.stack(
-                [observations[j][i] for j in range(len(observations))], axis=0
-            ),
-            dtype=np.float32,
-        )
-        for i in range(len(observations[0]))
-    ]
 
 
 class BatchFactory:
@@ -65,18 +46,14 @@ class BatchFactory:
             transitions = [future.result() for future in as_completed(futures)]
 
         # stack sampled data
-        observations = _stack_observations(
+        observations = stack_items(
             [transition.observation for transition in transitions]
         )
-        next_observations = _stack_observations(
+        next_observations = stack_items(
             [transition.next_observation for transition in transitions]
         )
-        actions = np.array(
-            [transition.action for transition in transitions], dtype=np.float32
-        )
-        rewards = np.array(
-            [transition.reward for transition in transitions], dtype=np.float32
-        )
+        actions = stack_items([transition.action for transition in transitions])
+        rewards = stack_items([transition.reward for transition in transitions])
         terminals = np.array(
             [transition.terminal for transition in transitions],
             dtype=np.float32,
@@ -88,8 +65,8 @@ class BatchFactory:
 
         return Batch(
             observations=observations,
-            actions=np.reshape(actions, [batch_size, -1]),
-            rewards=np.reshape(rewards, [batch_size, -1]),
+            actions=actions,
+            rewards=rewards,
             next_observations=next_observations,
             terminals=np.reshape(terminals, [batch_size, -1]),
             durations=np.reshape(durations, [batch_size, -1]),

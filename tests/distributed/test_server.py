@@ -34,7 +34,7 @@ def test_kiox_server_process():
     command_queue = Queue()
     ack_queue = Queue()
 
-    batch_factory = SharedBatchFactory((3, 84, 84), (4,), 1)
+    batch_factory = SharedBatchFactory((3, 84, 84), (4,), (1,), 1)
 
     # start server
     process = Process(
@@ -60,8 +60,8 @@ def test_kiox_server_process():
     sender = StepSender("localhost", 8000, 1)
 
     observation = np.random.random((3, 84, 84)).astype(np.float32)
-    action = np.random.random(4)
-    reward = np.random.random()
+    action = np.random.random(4).astype(np.float32)
+    reward = float(np.random.random())
     sender.collect(
         observation=observation,
         action=action,
@@ -127,6 +127,7 @@ def test_kiox_server():
         port=8000,
         observation_shape=(3, 84, 84),
         action_shape=(4,),
+        reward_shape=(1,),
         batch_size=1,
         step_buffer_builder=step_buffer_builder,
         transition_buffer_builder=transition_buffer_builder,
@@ -139,8 +140,8 @@ def test_kiox_server():
     sender = StepSender("localhost", 8000, 1)
 
     observation = np.random.random((3, 84, 84)).astype(np.float32)
-    action = np.random.random(4)
-    reward = np.random.random()
+    action = np.random.random(4).astype(np.float32)
+    reward = float(np.random.random())
     sender.collect(
         observation=observation,
         action=action,

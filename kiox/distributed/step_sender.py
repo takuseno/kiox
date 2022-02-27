@@ -1,22 +1,21 @@
 import dataclasses
 from queue import Queue
 from threading import Thread
-from typing import Optional
+from typing import Optional, Union
 
 import grpc
 
-from ..types import Action as ActionType
-from ..types import Observation as ObservationType
-from .proto.step_pb2 import ContinuousAction, DiscreteAction, StepProto
+from ..item import Item
+from .proto.step_pb2 import StepProto
 from .proto.step_pb2_grpc import StepServiceStub
-from .utility import convert_action_to_proto, convert_observation_to_proto
+from .utility import convert_item_to_proto
 
 
 @dataclasses.dataclass(frozen=True)
 class StepData:
-    observation: ObservationType
-    action: ActionType
-    reward: float
+    observation: Item
+    action: Item
+    reward: Item
     terminal: float
     timeout: Optional[bool]
 
@@ -36,12 +35,14 @@ class StepSender:
 
     def collect(
         self,
-        observation: ObservationType,
-        action: ActionType,
-        reward: float,
-        terminal: float,
+        observation: Item,
+        action: Item,
+        reward: Item,
+        terminal: Union[float, bool],
         timeout: Optional[bool] = None,
     ) -> None:
+        if not isinstance(terminal, float):
+            terminal = float(terminal)
         step_data = StepData(
             observation=observation,
             action=action,
@@ -60,24 +61,18 @@ class StepSender:
             if step_data is None:
                 break
 
-            observation = convert_observation_to_proto(step_data.observation)
-            action = convert_action_to_proto(step_data.action)
+            observation = convert_item_to_proto(step_data.observation)
+            action = convert_item_to_proto(step_data.action)
+            reward = convert_item_to_proto(step_data.reward)
             timeout = (
                 step_data.terminal
                 if step_data.timeout is None
                 else step_data.timeout
             )
-            continuous_action = (
-                action if isinstance(action, ContinuousAction) else None
-            )
-            discrete_action = (
-                action if isinstance(action, DiscreteAction) else None
-            )
             step = StepProto(
                 observation=observation,
-                continuous_action=continuous_action,
-                discrete_action=discrete_action,
-                reward=step_data.reward,
+                action=action,
+                reward=reward,
                 terminal=step_data.terminal,
                 timeout=timeout,
                 rollout_id=rollout_id,

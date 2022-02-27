@@ -1,18 +1,12 @@
 import numpy as np
 import pytest
 
-from kiox.distributed.proto.step_pb2 import (
-    ContinuousAction,
-    DiscreteAction,
-    DType,
-)
+from kiox.distributed.proto.step_pb2 import DType
 from kiox.distributed.utility import (
-    convert_action_to_proto,
     convert_dtype_to_proto,
-    convert_observation_to_proto,
-    convert_proto_to_action,
+    convert_item_to_proto,
     convert_proto_to_dtype,
-    convert_proto_to_observation,
+    convert_proto_to_item,
 )
 
 
@@ -38,43 +32,64 @@ def test_convert_proto_to_dtype(proto):
         assert dtype == np.float32
 
 
-def test_convert_observation_to_proto():
-    observation = np.random.random((3, 84, 84)).astype(np.float32)
-    proto = convert_observation_to_proto(observation)
-    array = np.frombuffer(proto.data[0], dtype=np.float32)
-    assert proto.length == 1
-    assert proto.dtype[0] == DType.FLOAT32
-    assert proto.shape[0].dim == [3, 84, 84]
-    assert np.all(array == observation.reshape(-1))
-
-
-def test_convert_proto_to_observation():
-    observation = np.random.random((3, 84, 84)).astype(np.float32)
-    proto = convert_observation_to_proto(observation)
-    converted_observation = convert_proto_to_observation(proto)
-    assert converted_observation.shape == observation.shape
-    assert np.all(converted_observation == observation)
-
-
-@pytest.mark.parametrize("action", [np.random.random(4), 3])
-def test_convert_action_to_proto(action):
-    proto = convert_action_to_proto(action)
-    if isinstance(action, np.ndarray):
-        assert isinstance(proto, ContinuousAction)
-        assert proto.length == action.size
-        assert np.allclose(proto.data, action.tolist())
+@pytest.mark.parametrize(
+    "item",
+    [
+        float(np.random.random()),
+        np.random.random((3, 84, 84)).astype(np.float32),
+        [
+            np.random.random(100).astype(np.float32),
+            np.random.random((3, 84, 84)).astype(np.float32),
+        ],
+    ],
+)
+def test_convert_item_to_proto(item):
+    proto = convert_item_to_proto(item)
+    if isinstance(item, float):
+        value = np.frombuffer(proto.data[0], dtype=np.float32)
+        assert proto.length == 1
+        assert proto.dtype[0] == DType.FLOAT32
+        assert proto.shape[0].dim == [1]
+        assert value == item
+    elif isinstance(item, np.ndarray):
+        value = np.frombuffer(proto.data[0], dtype=np.float32)
+        assert proto.length == 1
+        assert proto.dtype[0] == DType.FLOAT32
+        assert proto.shape[0].dim == [3, 84, 84]
+        assert np.all(value == item.reshape(-1))
     else:
-        assert isinstance(proto, DiscreteAction)
-        assert proto.data == action
+        value1 = np.frombuffer(proto.data[0], dtype=np.float32)
+        value2 = np.frombuffer(proto.data[1], dtype=np.float32)
+        assert proto.length == 2
+        assert proto.dtype[0] == DType.FLOAT32
+        assert proto.dtype[1] == DType.FLOAT32
+        assert proto.shape[0].dim == [100]
+        assert proto.shape[1].dim == [3, 84, 84]
+        assert np.all(value1 == item[0].reshape(-1))
+        assert np.all(value2 == item[1].reshape(-1))
 
 
-@pytest.mark.parametrize("action", [np.random.random(4), 3])
-def test_convert_proto_to_action(action):
-    proto = convert_action_to_proto(action)
-    converted_action = convert_proto_to_action(proto)
-    if isinstance(action, np.ndarray):
-        assert isinstance(converted_action, np.ndarray)
-        assert np.allclose(converted_action, action)
+@pytest.mark.parametrize(
+    "item",
+    [
+        float(np.random.random()),
+        np.random.random((3, 84, 84)).astype(np.float32),
+        [
+            np.random.random(100).astype(np.float32),
+            np.random.random((3, 84, 84)).astype(np.float32),
+        ],
+    ],
+)
+def test_convert_proto_to_item(item):
+    proto = convert_item_to_proto(item)
+    converted_item = convert_proto_to_item(proto)
+    if isinstance(item, float):
+        assert converted_item.shape == (1,)
+        assert np.allclose(converted_item[0], item)
+    elif isinstance(item, np.ndarray):
+        assert converted_item.shape == item.shape
+        assert np.all(converted_item == item)
     else:
-        assert isinstance(converted_action, int)
-        assert converted_action == action
+        for i in range(2):
+            assert converted_item[i].shape == item[i].shape
+            assert np.all(converted_item[i] == item[i])

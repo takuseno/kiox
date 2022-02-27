@@ -10,32 +10,20 @@ enum DType {
   FLOAT32 = 2;
 }
 
-message Observation {
+message ItemProto {
   int32 length = 1;
   repeated Shape shape = 2;
   repeated bytes data = 3;
   repeated DType dtype = 4;
 }
 
-message ContinuousAction {
-  int32 length = 1;
-  repeated float data = 2;
-}
-
-message DiscreteAction {
-  int32 data = 1;
-}
-
 message StepProto {
-  Observation observation = 1;
-  oneof action {
-    ContinuousAction continuous_action = 2;
-    DiscreteAction discrete_action = 3;
-  }
-  float reward = 4;
-  bool terminal = 5;
-  bool timeout = 6;
-  int32 rollout_id = 7;
+  ItemProto observation = 1;
+  ItemProto action = 2;
+  ItemProto reward = 3;
+  float terminal = 4;
+  bool timeout = 5;
+  int32 rollout_id = 6;
 }
 
 message StepReply {

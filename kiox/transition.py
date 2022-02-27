@@ -3,24 +3,17 @@ from typing import Optional, Sequence, cast
 
 import numpy as np
 
+from .item import Item, zeros_like
 from .step_buffer import StepBuffer
-from .types import Action, Observation
-
-
-def _zeros_like(observation: Observation) -> Observation:
-    if isinstance(observation, np.ndarray):
-        return np.zeros_like(observation)
-    else:
-        return [np.zeros_like(obs) for obs in observation]
 
 
 @dataclasses.dataclass(frozen=True)
 class Transition:
-    observation: Observation
-    action: Action
-    reward: float
-    next_observation: Observation
-    terminal: float
+    observation: Item
+    action: Item
+    reward: Item
+    next_observation: Item
+    terminal: Item
     duration: int
 
 
@@ -41,7 +34,7 @@ class SimpleLazyTransition(LazyTransition):
         step = step_buffer.get(self.curr_idx)
         observation = step.observation
         if self.next_idx is None:
-            next_observation = _zeros_like(observation)
+            next_observation = zeros_like(observation)
         else:
             next_observation = step_buffer.get(self.next_idx).observation
         return Transition(

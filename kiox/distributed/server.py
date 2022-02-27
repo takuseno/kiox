@@ -17,7 +17,7 @@ from ..transition_buffer import TransitionBuffer
 from ..transition_factory import TransitionFactory
 from .proto.step_pb2 import StepProto, StepReply
 from .shared_batch_factory import SharedBatchFactory
-from .utility import convert_proto_to_action, convert_proto_to_observation
+from .utility import convert_proto_to_item
 
 
 class KioxStepServiceServicer(StepServiceServicer):  # type: ignore
@@ -44,14 +44,9 @@ class KioxStepServiceServicer(StepServiceServicer):  # type: ignore
         self._gamma = gamma
 
     def Send(self, request: StepProto, context: Any) -> StepReply:
-        observation = convert_proto_to_observation(request.observation)
-        if request.WhichOneof("action") == "discrete_action":
-            action_proto = request.discrete_action
-        else:
-            action_proto = request.continuous_action
-        action = convert_proto_to_action(action_proto)
-        reward = request.reward
-        terminal = request.terminal
+        observation = convert_proto_to_item(request.observation)
+        action = convert_proto_to_item(request.action)
+        reward = convert_proto_to_item(request.reward)
         timeout = request.timeout
         rollout_id = request.rollout_id
 
@@ -68,7 +63,7 @@ class KioxStepServiceServicer(StepServiceServicer):  # type: ignore
             observation=observation,
             action=action,
             reward=reward,
-            terminal=terminal,
+            terminal=request.terminal,
         )
 
         if timeout:
@@ -171,7 +166,8 @@ class KioxServer:
         host: str,
         port: int,
         observation_shape: Union[Sequence[Sequence[int]], Sequence[int]],
-        action_shape: Sequence[int],
+        action_shape: Union[Sequence[Sequence[int]], Sequence[int]],
+        reward_shape: Union[Sequence[Sequence[int]], Sequence[int]],
         batch_size: int,
         step_buffer_builder: Callable[[], StepBuffer],
         transition_buffer_builder: Callable[[], TransitionBuffer],
@@ -183,6 +179,7 @@ class KioxServer:
         self._batch_factory = SharedBatchFactory(
             observation_shape=observation_shape,
             action_shape=action_shape,
+            reward_shape=reward_shape,
             batch_size=batch_size,
         )
         self._command_queue = Queue()

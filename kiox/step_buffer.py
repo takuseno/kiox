@@ -1,17 +1,18 @@
 import dataclasses
 from typing import Dict, List, Optional, Sequence
 
+import numpy as np
 from typing_extensions import Protocol
 
-from .types import Action, Observation
+from .item import Item
 
 
 @dataclasses.dataclass(frozen=True)
 class Step:
     idx: int
-    observation: Observation
-    action: Action
-    reward: float
+    observation: Item
+    action: Item
+    reward: Item
     terminal: float
 
 
@@ -177,7 +178,9 @@ class EpisodicStepBuffer(StepBuffer):
         next_idx = idx
         ret = 0.0
         for i in range(duration):
-            ret += (gamma**i) * self.get(next_idx).reward
+            reward = self.get(next_idx).reward
+            assert isinstance(reward, (float, np.ndarray))
+            ret += (gamma**i) * reward
             if next_idx in self._next_index:
                 next_idx = self._next_index[next_idx]
             else:
