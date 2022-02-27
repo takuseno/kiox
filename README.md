@@ -53,6 +53,7 @@ server = KioxServer(
     port=8000,
     observation_shape=(4,),
     action_shape=(1,),
+    reward_shape=(1,),
     batch_size=8,
     step_buffer_builder=step_buffer_builder,
     transition_buffer_builder=transition_buffer_builder,
