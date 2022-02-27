@@ -1,6 +1,7 @@
 import numpy as np
 
-from kiox.step_buffer import Step, UnlimitedStepBuffer
+from kiox.episode import EpisodeManager
+from kiox.step import Step
 from kiox.transition import SimpleLazyTransition
 
 
@@ -53,8 +54,8 @@ class TransitionFactory:
     def __init__(self, step_factory):
         self.step_factory = step_factory
         self.prev_step = step_factory()
-        self.step_buffer = UnlimitedStepBuffer()
-        self.step_buffer.append(self.prev_step)
+        self.episode_manager = EpisodeManager()
+        self.episode_manager.append(self.prev_step)
 
     def __call__(self, terminal=False):
         step = self.step_factory()
@@ -65,5 +66,5 @@ class TransitionFactory:
             duration=1,
         )
         self.prev_step = step
-        self.step_buffer.append(step)
+        self.episode_manager.append(step)
         return transition

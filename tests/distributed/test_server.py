@@ -16,15 +16,11 @@ from kiox.distributed.server import (
 )
 from kiox.distributed.shared_batch_factory import SharedBatchFactory
 from kiox.distributed.step_sender import StepSender
-from kiox.step_buffer import FIFOStepBuffer
 from kiox.transition_buffer import FIFOTransitionBuffer
 from kiox.transition_factory import SimpleTransitionFactory
 
 
 def test_kiox_server_process():
-    def step_buffer_builder():
-        return FIFOStepBuffer(10)
-
     def transition_buffer_builder():
         return FIFOTransitionBuffer(10)
 
@@ -45,7 +41,6 @@ def test_kiox_server_process():
             batch_factory,
             command_queue,
             ack_queue,
-            step_buffer_builder,
             transition_buffer_builder,
             transition_factory_builder,
         ),
@@ -113,9 +108,6 @@ def test_kiox_server_process():
 
 
 def test_kiox_server():
-    def step_buffer_builder():
-        return FIFOStepBuffer(10)
-
     def transition_buffer_builder():
         return FIFOTransitionBuffer(10)
 
@@ -129,7 +121,6 @@ def test_kiox_server():
         action_shape=(4,),
         reward_shape=(1,),
         batch_size=1,
-        step_buffer_builder=step_buffer_builder,
         transition_buffer_builder=transition_buffer_builder,
         transition_factory_builder=transition_factory_builder,
     )

@@ -2,13 +2,15 @@ from typing import BinaryIO
 
 import h5py
 
-from .step_buffer import StepBuffer
+from .episode import EpisodeManager
 from .step_collector import StepCollector
 
 
-def dump_memory(f: BinaryIO, step_buffer: StepBuffer) -> None:
+def dump_memory(f: BinaryIO, episode_manager: EpisodeManager) -> None:
     # sort steps by its id
-    steps = step_buffer.steps
+    steps = []
+    for episode in episode_manager.episodes:
+        steps += list(episode.steps)
     sorted_steps = sorted(steps, key=lambda s: s.idx)
 
     observations = []

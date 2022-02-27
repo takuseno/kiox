@@ -10,8 +10,8 @@ from kiox.distributed.proto.step_pb2_grpc import (
 )
 
 from ..batch_factory import Batch
+from ..episode import EpisodeManager
 from ..io import dump_memory, load_memory
-from ..step_buffer import StepBuffer
 from ..step_collector import StepCollector
 from ..transition_buffer import TransitionBuffer
 from ..transition_factory import TransitionFactory
@@ -21,7 +21,7 @@ from .utility import convert_proto_to_item
 
 
 class KioxStepServiceServicer(StepServiceServicer):  # type: ignore
-    _step_buffer: StepBuffer
+    _episode_manager: EpisodeManager
     _transition_buffer: TransitionBuffer
     _transition_factory: TransitionFactory
     _step_collectors: Dict[int, StepCollector]
@@ -30,13 +30,13 @@ class KioxStepServiceServicer(StepServiceServicer):  # type: ignore
 
     def __init__(
         self,
-        step_buffer: StepBuffer,
+        episode_manager: EpisodeManager,
         transition_buffer: TransitionBuffer,
         transition_factory: TransitionFactory,
         n_steps: int = 1,
         gamma: float = 0.99,
     ):
-        self._step_buffer = step_buffer
+        self._episode_manager = episode_manager
         self._transition_buffer = transition_buffer
         self._transition_factory = transition_factory
         self._step_collectors = {}
@@ -52,7 +52,7 @@ class KioxStepServiceServicer(StepServiceServicer):  # type: ignore
 
         if rollout_id not in self._step_collectors:
             self._step_collectors[rollout_id] = StepCollector(
-                step_buffer=self._step_buffer,
+                episode_manager=self._episode_manager,
                 transition_buffer=self._transition_buffer,
                 transition_factory=self._transition_factory,
                 n_steps=self._n_steps,
@@ -91,20 +91,19 @@ def kiox_server_process(
     batch_factory: SharedBatchFactory,
     command_queue: "Queue[str]",
     ack_queue: "Queue[str]",
-    step_buffer_builder: Callable[[], StepBuffer],
     transition_buffer_builder: Callable[[], TransitionBuffer],
     transition_factory_builder: Callable[[], TransitionFactory],
     max_workers: int = 10,
     n_steps: int = 1,
     gamma: float = 0.99,
 ) -> None:
-    step_buffer = step_buffer_builder()
+    episode_manager = EpisodeManager()
     transition_buffer = transition_buffer_builder()
     transition_factory = transition_factory_builder()
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
     servicer = KioxStepServiceServicer(
-        step_buffer=step_buffer,
+        episode_manager=episode_manager,
         transition_buffer=transition_buffer,
         transition_factory=transition_factory,
         n_steps=n_steps,
@@ -122,20 +121,20 @@ def kiox_server_process(
         if command == COMMAND_STOP:
             break
         if command == COMMAND_GET_STEP_LEN:
-            ack_queue.put(str(step_buffer.size()))
+            ack_queue.put(str(episode_manager.get_total_step_size()))
         elif command == COMMAND_GET_TRANSITION_LEN:
             ack_queue.put(str(transition_buffer.size()))
         elif command == COMMAND_SAVE:
             path = command_queue.get()
             with open(path, "wb") as f:
-                dump_memory(f, step_buffer)
+                dump_memory(f, episode_manager)
             ack_queue.put(ACK_SAVED)
         elif command == COMMAND_LOAD:
             path = command_queue.get()
             with open(path, "rb") as f:
                 # create a temporary StepCollector
                 step_collector = StepCollector(
-                    step_buffer=step_buffer,
+                    episode_manager=episode_manager,
                     transition_buffer=transition_buffer,
                     transition_factory=transition_factory,
                     n_steps=n_steps,
@@ -144,7 +143,7 @@ def kiox_server_process(
                 load_memory(f, step_collector)
             ack_queue.put(ACK_LOADED)
         elif command == COMMAND_SAMPLE:
-            batch_factory.sample(step_buffer, transition_buffer)
+            batch_factory.sample(episode_manager, transition_buffer)
             ack_queue.put(ACK_SAMPLED)
         else:
             raise ValueError(f"invalid command: {command}")
@@ -169,7 +168,6 @@ class KioxServer:
         action_shape: Union[Sequence[Sequence[int]], Sequence[int]],
         reward_shape: Union[Sequence[Sequence[int]], Sequence[int]],
         batch_size: int,
-        step_buffer_builder: Callable[[], StepBuffer],
         transition_buffer_builder: Callable[[], TransitionBuffer],
         transition_factory_builder: Callable[[], TransitionFactory],
         max_workers: int = 10,
@@ -192,7 +190,6 @@ class KioxServer:
                 self._batch_factory,
                 self._command_queue,
                 self._ack_queue,
-                step_buffer_builder,
                 transition_buffer_builder,
                 transition_factory_builder,
                 max_workers,

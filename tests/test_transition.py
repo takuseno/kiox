@@ -2,7 +2,7 @@ from collections import deque
 
 import numpy as np
 
-from kiox.step_buffer import EpisodicStepBuffer
+from kiox.episode import EpisodeManager
 from kiox.transition import FrameStackLazyTransition, SimpleLazyTransition
 
 from .utility import StepFactory
@@ -10,13 +10,13 @@ from .utility import StepFactory
 
 def test_simple_lazy_transition():
     factory = StepFactory()
-    buffer = EpisodicStepBuffer()
+    episode_manager = EpisodeManager()
 
     step1 = factory()
-    buffer.append(step1)
+    episode_manager.append(step1)
 
     step2 = factory(terminal=True)
-    buffer.append(step2)
+    episode_manager.append(step2)
 
     # test transition
     lazy_transition1 = SimpleLazyTransition(
@@ -25,7 +25,7 @@ def test_simple_lazy_transition():
         multi_step_reward=1.0,
         duration=1,
     )
-    transition = lazy_transition1.create(buffer)
+    transition = lazy_transition1.create(episode_manager)
     assert np.all(transition.observation == step1.observation)
     assert np.all(transition.next_observation == step2.observation)
     assert transition.reward == 1.0
@@ -39,7 +39,7 @@ def test_simple_lazy_transition():
         multi_step_reward=1.0,
         duration=1,
     )
-    transition = lazy_transition2.create(buffer)
+    transition = lazy_transition2.create(episode_manager)
     assert np.all(transition.observation == step2.observation)
     assert np.all(transition.next_observation == 0.0)
     assert transition.reward == 1.0
@@ -49,7 +49,7 @@ def test_simple_lazy_transition():
 
 def test_frame_stack_lazy_transition():
     factory = StepFactory(observation_shape=(1, 84, 84))
-    buffer = EpisodicStepBuffer()
+    episode_manager = EpisodeManager()
     steps = []
     prev_idx = deque(maxlen=4)
     frames = deque(maxlen=4)
@@ -59,7 +59,7 @@ def test_frame_stack_lazy_transition():
 
     for i in range(9):
         step = factory()
-        buffer.append(step)
+        episode_manager.append(step)
         steps.append(step)
         prev_idx.append(step.idx)
         frames.append(step.observation)
@@ -73,7 +73,7 @@ def test_frame_stack_lazy_transition():
                 n_frames=3,
                 prev_frames=list(prev_idx)[:-2],
             )
-            transition = lazy_transition.create(buffer)
+            transition = lazy_transition.create(episode_manager)
 
             ref_observation = np.vstack(list(frames)[:-1])
             ref_next_observation = np.vstack(list(frames)[1:])
@@ -87,7 +87,7 @@ def test_frame_stack_lazy_transition():
             assert transition.duration == 1
 
     step = factory(terminal=True)
-    buffer.append(step)
+    episode_manager.append(step)
     steps.append(step)
     prev_idx.append(step.idx)
     frames.append(step.observation)
@@ -101,7 +101,7 @@ def test_frame_stack_lazy_transition():
         n_frames=3,
         prev_frames=list(prev_idx)[1:-1],
     )
-    transition = lazy_transition.create(buffer)
+    transition = lazy_transition.create(episode_manager)
 
     ref_observation = np.vstack(list(frames)[1:])
     ref_next_observation = np.zeros((3, 84, 84))

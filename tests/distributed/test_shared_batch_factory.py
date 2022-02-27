@@ -24,7 +24,7 @@ def test_shared_batch_factory(observation_shape):
     init_rewards = batch_factory.batch.rewards.copy()
     init_durations = batch_factory.batch.durations.copy()
 
-    batch_factory.sample(factory.step_buffer, buffer)
+    batch_factory.sample(factory.episode_manager, buffer)
     observations = batch_factory.batch.observations.copy()
     next_observations = batch_factory.batch.next_observations.copy()
     actions = batch_factory.batch.actions.copy()

@@ -1,4 +1,4 @@
-from kiox.step_buffer import EpisodicStepBuffer
+from kiox.episode import Episode
 from kiox.transition_factory import (
     FrameStackTransitionFactory,
     SimpleTransitionFactory,
@@ -9,12 +9,12 @@ from .utility import StepFactory
 
 def test_simple_transition_factory():
     factory = StepFactory()
-    buffer = EpisodicStepBuffer()
+    episode = Episode()
     steps = []
 
     for _ in range(10):
         step = factory()
-        buffer.append(step)
+        episode.append(step)
         steps.append(step)
 
     transition_factory = SimpleTransitionFactory()
@@ -24,7 +24,7 @@ def test_simple_transition_factory():
             lazy_transition = transition_factory.create(
                 step=steps[i],
                 next_step=None,
-                episode_steps=buffer,
+                episode=episode,
                 duration=1,
                 gamma=0.99,
             )
@@ -33,7 +33,7 @@ def test_simple_transition_factory():
             lazy_transition = transition_factory.create(
                 step=steps[i],
                 next_step=steps[i + 1],
-                episode_steps=buffer,
+                episode=episode,
                 duration=1,
                 gamma=0.99,
             )
@@ -46,12 +46,12 @@ def test_simple_transition_factory():
 
 def test_frame_stack_transition_factory():
     factory = StepFactory(observation_shape=(1, 84, 84))
-    buffer = EpisodicStepBuffer()
+    episode = Episode()
     steps = []
 
     for _ in range(10):
         step = factory()
-        buffer.append(step)
+        episode.append(step)
         steps.append(step)
 
     transition_factory = FrameStackTransitionFactory(n_frames=3)
@@ -61,7 +61,7 @@ def test_frame_stack_transition_factory():
             lazy_transition = transition_factory.create(
                 step=steps[i],
                 next_step=None,
-                episode_steps=buffer,
+                episode=episode,
                 duration=1,
                 gamma=0.99,
             )
@@ -70,7 +70,7 @@ def test_frame_stack_transition_factory():
             lazy_transition = transition_factory.create(
                 step=steps[i],
                 next_step=steps[i + 1],
-                episode_steps=buffer,
+                episode=episode,
                 duration=1,
                 gamma=0.99,
             )

@@ -21,7 +21,7 @@ def test_unlimited_transition_buffer():
     assert buffer.get_by_index(0) is transitions[0]
 
     # test sample
-    transition = buffer.sample(factory.step_buffer)
+    transition = buffer.sample(factory.episode_manager)
     assert isinstance(transition, Transition)
 
     # test copy_from
@@ -44,7 +44,7 @@ def test_fifo_transition_buffer():
     assert buffer.get_by_index(0) is transitions[5]
 
     # test sample
-    transition = buffer.sample(factory.step_buffer)
+    transition = buffer.sample(factory.episode_manager)
     assert isinstance(transition, Transition)
 
     # test copy_from

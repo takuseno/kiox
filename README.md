@@ -8,11 +8,10 @@ kiox is a composable experience replay buffer library.
 
 ```py
 from kiox.kiox import Kiox
-from kiox.step_buffer import FIFOStepBuffer
 from kiox.transition_buffer import FIFOTransitionBuffer
 from kiox.transition_factory import SimpleTransitionFactory
 
-kiox = Kiox(FIFOStepBuffer(1000), FIFOTransitionBuffer(1000), SimpleTransitionFactory())
+kiox = Kiox(FIFOTransitionBuffer(1000), SimpleTransitionFactory())
 
 # collect experiences
 kiox.collect(<obsrvation>, <action>, <reward>, <terminal>)
@@ -38,9 +37,6 @@ In trainer process:
 # trainer process
 from kiox.distributed.server import KioxServer
 
-def step_buffer_builder():
-    return FIFOStepBuffer(1000)
-
 def transition_buffer_builder():
     return FIFOTransitionBuffer(1000)
 
@@ -55,7 +51,6 @@ server = KioxServer(
     action_shape=(1,),
     reward_shape=(1,),
     batch_size=8,
-    step_buffer_builder=step_buffer_builder,
     transition_buffer_builder=transition_buffer_builder,
     transition_factory_builder=transition_factory_builder,
 )

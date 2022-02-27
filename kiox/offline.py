@@ -3,8 +3,6 @@ from typing import Optional
 import numpy as np
 
 from .kiox import Kiox
-from .step_buffer import UnlimitedStepBuffer
-from .step_collector import StepCollector
 from .transition_buffer import UnlimitedTransitionBuffer
 from .transition_factory import (
     FrameStackTransitionFactory,
@@ -23,30 +21,23 @@ def build_from_dataset(
     n_steps: int = 1,
     gamma: float = 0.99,
 ) -> Kiox:
-    step_buffer = UnlimitedStepBuffer()
     transition_buffer = UnlimitedTransitionBuffer()
-    step_collector = StepCollector(
-        step_buffer=step_buffer,
-        transition_buffer=transition_buffer,
+    kiox = Kiox(
         transition_factory=transition_factory,
+        transition_buffer=transition_buffer,
         n_steps=n_steps,
         gamma=gamma,
     )
     for i in range(observations.shape[0]):
-        step_collector.collect(
+        kiox.collect(
             observation=observations[i],
             action=actions[i],
             reward=rewards[i],
             terminal=terminals[i],
         )
         if episode_terminals is not None and episode_terminals[i]:
-            step_collector.clip_episode()
-    return Kiox(
-        step_buffer=step_buffer,
-        transition_factory=transition_factory,
-        transition_buffer=transition_buffer,
-        n_steps=n_steps,
-    )
+            kiox.clip_episode()
+    return kiox
 
 
 def create_simple_kiox_from_dataset(

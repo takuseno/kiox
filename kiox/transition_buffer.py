@@ -1,21 +1,24 @@
+# pylint: disable=R1711
 from collections import deque
-from typing import Deque, List, Sequence
+from typing import Deque, List, Optional, Sequence
 
 import numpy as np
 from typing_extensions import Protocol
 
-from .step_buffer import StepBuffer
+from .episode import EpisodeManager
 from .transition import LazyTransition, Transition
 
 
 class TransitionBuffer(Protocol):
-    def append(self, lazy_transition: LazyTransition) -> None:
+    def append(
+        self, lazy_transition: LazyTransition
+    ) -> Optional[LazyTransition]:
         raise NotImplementedError
 
     def get_by_index(self, index: int) -> LazyTransition:
         raise NotImplementedError
 
-    def sample(self, step_buffer: StepBuffer) -> Transition:
+    def sample(self, episode_manager: EpisodeManager) -> Transition:
         raise NotImplementedError
 
     def size(self) -> int:
@@ -35,15 +38,18 @@ class UnlimitedTransitionBuffer(TransitionBuffer):
     def __init__(self) -> None:
         self._buffer = []
 
-    def append(self, lazy_transition: LazyTransition) -> None:
+    def append(
+        self, lazy_transition: LazyTransition
+    ) -> Optional[LazyTransition]:
         self._buffer.append(lazy_transition)
+        return None
 
     def get_by_index(self, index: int) -> LazyTransition:
         return self._buffer[index]
 
-    def sample(self, step_buffer: StepBuffer) -> Transition:
+    def sample(self, episode_manager: EpisodeManager) -> Transition:
         index = int(np.random.randint(len(self._buffer)))
-        return self._buffer[index].create(step_buffer)
+        return self._buffer[index].create(episode_manager)
 
     def size(self) -> int:
         return len(self._buffer)
@@ -58,20 +64,30 @@ class UnlimitedTransitionBuffer(TransitionBuffer):
 
 
 class FIFOTransitionBuffer(TransitionBuffer):
+    _maxlen: int
     _buffer: Deque[LazyTransition]
 
     def __init__(self, maxlen: int) -> None:
+        self._maxlen = maxlen
         self._buffer = deque(maxlen=maxlen)
 
-    def append(self, lazy_transition: LazyTransition) -> None:
+    def append(
+        self, lazy_transition: LazyTransition
+    ) -> Optional[LazyTransition]:
+        dropped_transition: Optional[LazyTransition]
+        if self.size() == self._maxlen:
+            dropped_transition = self._buffer[0]
+        else:
+            dropped_transition = None
         self._buffer.append(lazy_transition)
+        return dropped_transition
 
     def get_by_index(self, index: int) -> LazyTransition:
         return self._buffer[index]
 
-    def sample(self, step_buffer: StepBuffer) -> Transition:
+    def sample(self, episode_manager: EpisodeManager) -> Transition:
         index = int(np.random.randint(len(self._buffer)))
-        return self._buffer[index].create(step_buffer)
+        return self._buffer[index].create(episode_manager)
 
     def size(self) -> int:
         return len(self._buffer)

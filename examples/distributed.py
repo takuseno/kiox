@@ -5,7 +5,6 @@ import numpy as np
 
 from kiox.distributed.server import KioxServer
 from kiox.distributed.step_sender import StepSender
-from kiox.step_buffer import FIFOStepBuffer
 from kiox.transition_buffer import FIFOTransitionBuffer
 from kiox.transition_factory import SimpleTransitionFactory
 
@@ -26,9 +25,6 @@ def rollout():
 
 
 def main():
-    def step_buffer_builder():
-        return FIFOStepBuffer(1000)
-
     def transition_buffer_builder():
         return FIFOTransitionBuffer(1000)
 
@@ -43,7 +39,6 @@ def main():
         action_shape=(1,),
         reward_shape=(1,),
         batch_size=8,
-        step_buffer_builder=step_buffer_builder,
         transition_buffer_builder=transition_buffer_builder,
         transition_factory_builder=transition_factory_builder,
     )

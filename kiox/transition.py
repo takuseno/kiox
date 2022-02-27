@@ -3,8 +3,8 @@ from typing import Optional, Sequence, cast
 
 import numpy as np
 
+from .episode import EpisodeManager
 from .item import Item, zeros_like
-from .step_buffer import StepBuffer
 
 
 @dataclasses.dataclass(frozen=True)
@@ -24,19 +24,20 @@ class LazyTransition:
     multi_step_reward: float
     duration: int
 
-    def create(self, step_buffer: StepBuffer) -> Transition:
+    def create(self, episode_manager: EpisodeManager) -> Transition:
         raise NotImplementedError
 
 
 @dataclasses.dataclass(frozen=True)
 class SimpleLazyTransition(LazyTransition):
-    def create(self, step_buffer: StepBuffer) -> Transition:
-        step = step_buffer.get(self.curr_idx)
+    def create(self, episode_manager: EpisodeManager) -> Transition:
+        step = episode_manager.get_step_by_idx(self.curr_idx)
         observation = step.observation
         if self.next_idx is None:
             next_observation = zeros_like(observation)
         else:
-            next_observation = step_buffer.get(self.next_idx).observation
+            next_step = episode_manager.get_step_by_idx(self.next_idx)
+            next_observation = next_step.observation
         return Transition(
             observation=observation,
             action=step.action,
@@ -52,8 +53,8 @@ class FrameStackLazyTransition(LazyTransition):
     prev_frames: Sequence[int]
     n_frames: int
 
-    def create(self, step_buffer: StepBuffer) -> Transition:
-        step = step_buffer.get(self.curr_idx)
+    def create(self, episode_manager: EpisodeManager) -> Transition:
+        step = episode_manager.get_step_by_idx(self.curr_idx)
         observation = step.observation
         assert isinstance(observation, np.ndarray)
 
@@ -63,7 +64,7 @@ class FrameStackLazyTransition(LazyTransition):
 
         # stack previous frames
         frames += [
-            cast(np.ndarray, step_buffer.get(idx).observation)
+            cast(np.ndarray, episode_manager.get_step_by_idx(idx).observation)
             for idx in self.prev_frames
         ]
 
@@ -75,7 +76,8 @@ class FrameStackLazyTransition(LazyTransition):
         if self.next_idx is None:
             stacked_next_observation = np.zeros_like(stacked_observation)
         else:
-            next_observation = step_buffer.get(self.next_idx).observation
+            next_step = episode_manager.get_step_by_idx(self.next_idx)
+            next_observation = next_step.observation
             assert isinstance(next_observation, np.ndarray)
             next_frames = frames[1:] + [next_observation]
             stacked_next_observation = np.vstack(next_frames)

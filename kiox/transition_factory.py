@@ -2,7 +2,8 @@ from typing import Optional
 
 from typing_extensions import Protocol
 
-from .step_buffer import EpisodicStepBuffer, Step
+from .episode import Episode
+from .step import Step
 from .transition import (
     FrameStackLazyTransition,
     LazyTransition,
@@ -15,7 +16,7 @@ class TransitionFactory(Protocol):
         self,
         step: Step,
         next_step: Optional[Step],
-        episode_steps: EpisodicStepBuffer,
+        episode: Episode,
         duration: int,
         gamma: float,
     ) -> LazyTransition:
@@ -27,16 +28,14 @@ class SimpleTransitionFactory(TransitionFactory):
         self,
         step: Step,
         next_step: Optional[Step],
-        episode_steps: EpisodicStepBuffer,
+        episode: Episode,
         duration: int,
         gamma: float,
     ) -> SimpleLazyTransition:
         return SimpleLazyTransition(
             curr_idx=step.idx,
             next_idx=None if next_step is None else next_step.idx,
-            multi_step_reward=episode_steps.compute_return(
-                step.idx, duration, gamma
-            ),
+            multi_step_reward=episode.compute_return(step.idx, duration, gamma),
             duration=duration,
         )
 
@@ -51,22 +50,20 @@ class FrameStackTransitionFactory(TransitionFactory):
         self,
         step: Step,
         next_step: Optional[Step],
-        episode_steps: EpisodicStepBuffer,
+        episode: Episode,
         duration: int,
         gamma: float,
     ) -> FrameStackLazyTransition:
         prev_frames = []
         for i in range(self._n_frames - 1):
-            prev_step = episode_steps.get_prev(step.idx, i + 1)
+            prev_step = episode.get_prev(step.idx, i + 1)
             if prev_step is None:
                 break
             prev_frames.append(prev_step.idx)
         return FrameStackLazyTransition(
             curr_idx=step.idx,
             next_idx=None if next_step is None else next_step.idx,
-            multi_step_reward=episode_steps.compute_return(
-                step.idx, duration, gamma
-            ),
+            multi_step_reward=episode.compute_return(step.idx, duration, gamma),
             duration=duration,
             prev_frames=list(reversed(prev_frames)),
             n_frames=self._n_frames,

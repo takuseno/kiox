@@ -4,7 +4,7 @@ from typing import Optional, Sequence, Union
 import numpy as np
 
 from ..batch_factory import Batch, BatchFactory
-from ..step_buffer import StepBuffer
+from ..episode import EpisodeManager
 from ..transition_buffer import TransitionBuffer
 from .shared_array import create_shared_array
 
@@ -65,12 +65,16 @@ class SharedBatchFactory:
 
     def sample(
         self,
-        step_buffer: StepBuffer,
+        episode_manager: EpisodeManager,
         transition_buffer: TransitionBuffer,
         max_pararellism: Optional[int] = None,
     ) -> None:
         # sampling
-        factory = BatchFactory(step_buffer, transition_buffer, max_pararellism)
+        factory = BatchFactory(
+            episode_manager=episode_manager,
+            transition_buffer=transition_buffer,
+            max_pararellism=max_pararellism,
+        )
         batch = factory.sample(self._batch_size)
 
         # copy arrays

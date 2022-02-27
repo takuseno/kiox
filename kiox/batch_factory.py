@@ -4,8 +4,8 @@ from typing import Optional
 
 import numpy as np
 
+from .episode import EpisodeManager
 from .item import StackedItem, stack_items
-from .step_buffer import StepBuffer
 from .transition_buffer import TransitionBuffer
 
 
@@ -20,17 +20,17 @@ class Batch:
 
 
 class BatchFactory:
-    _step_buffer: StepBuffer
+    _episode_manager: EpisodeManager
     _transition_buffer: TransitionBuffer
     _max_pararellism: Optional[int]
 
     def __init__(
         self,
-        step_buffer: StepBuffer,
+        episode_manager: EpisodeManager,
         transition_buffer: TransitionBuffer,
         max_pararellism: Optional[int] = None,
     ):
-        self._step_buffer = step_buffer
+        self._episode_manager = episode_manager
         self._transition_buffer = transition_buffer
         self._max_pararellism = max_pararellism
 
@@ -39,7 +39,7 @@ class BatchFactory:
         with ThreadPoolExecutor(max_workers=self._max_pararellism) as executor:
             futures = [
                 executor.submit(
-                    self._transition_buffer.sample, self._step_buffer
+                    self._transition_buffer.sample, self._episode_manager
                 )
                 for _ in range(batch_size)
             ]

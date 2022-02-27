@@ -19,7 +19,7 @@ def test_create_simple_kiox_from_dataset():
         terminals=terminals,
     )
 
-    assert kiox.step_buffer.size() == 1000
+    assert kiox.episode_manager.get_total_step_size() == 1000
     assert kiox.transition_buffer.size() == 999
 
 
@@ -37,7 +37,7 @@ def test_create_frame_stack_kiox_from_dataset():
         n_frames=3,
     )
 
-    assert kiox.step_buffer.size() == 1000
+    assert kiox.episode_manager.get_total_step_size() == 1000
     assert kiox.transition_buffer.size() == 999
 
     batch = kiox.sample(32)
