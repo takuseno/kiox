@@ -56,6 +56,12 @@ class Kiox:
             terminal=terminal,
         )
 
+    def get_step_buffer_size(self) -> int:
+        return self._step_buffer.size()
+
+    def get_transition_buffer_size(self) -> int:
+        return self._transition_buffer.size()
+
     def clip_episode(self) -> None:
         self._step_collector.clip_episode()
 

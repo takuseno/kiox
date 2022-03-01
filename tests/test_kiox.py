@@ -22,8 +22,8 @@ def test_kiox():
             reward=reward,
             terminal=0.0,
         )
-        assert kiox.episode_manager.active_episode.size() == i + 1
-        assert kiox.transition_buffer.size() == i
+        assert kiox.get_transition_buffer_size() == i
+        assert kiox.get_step_buffer_size() == i + 1
 
     # test sample
     batch = kiox.sample(5)

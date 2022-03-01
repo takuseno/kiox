@@ -47,10 +47,14 @@ def main():
     # start rollout
     p = Process(target=rollout)
     p.start()
+
+    # wait until episode ends
     p.join()
 
+    # get buffer size
     print(server.get_step_buffer_size())
-    print(server.sample())
+
+    # sample mini-batch
     print(server.sample())
 
     server.stop()
