@@ -1,4 +1,5 @@
 from kiox.episode import Episode
+from kiox.step import StepBuffer
 from kiox.transition_factory import (
     FrameStackTransitionFactory,
     SimpleTransitionFactory,
@@ -9,7 +10,7 @@ from .utility import StepFactory
 
 def test_simple_transition_factory():
     factory = StepFactory()
-    episode = Episode()
+    episode = Episode(StepBuffer())
     steps = []
 
     for _ in range(10):
@@ -46,7 +47,7 @@ def test_simple_transition_factory():
 
 def test_frame_stack_transition_factory():
     factory = StepFactory(observation_shape=(1, 84, 84))
-    episode = Episode()
+    episode = Episode(StepBuffer())
     steps = []
 
     for _ in range(10):

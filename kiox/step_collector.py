@@ -89,3 +89,7 @@ class StepCollector:
         dropped_transition = self._transition_buffer.append(transition)
         if dropped_transition:
             self._episode_manager.drop_step(dropped_transition.curr_idx)
+
+    @property
+    def episode_manager(self) -> EpisodeManager:
+        return self._episode_manager

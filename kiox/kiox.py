@@ -4,12 +4,14 @@ from .batch_factory import Batch, BatchFactory
 from .episode import EpisodeManager
 from .io import dump_memory, load_memory
 from .item import Item
+from .step import StepBuffer
 from .step_collector import StepCollector
 from .transition_buffer import TransitionBuffer
 from .transition_factory import TransitionFactory
 
 
 class Kiox:
+    _step_buffer: StepBuffer
     _episode_manager: EpisodeManager
     _transition_buffer: TransitionBuffer
     _transition_factory: TransitionFactory
@@ -23,11 +25,12 @@ class Kiox:
         n_steps: int = 1,
         gamma: float = 0.99,
     ):
-        self._episode_manager = EpisodeManager()
+        self._step_buffer = StepBuffer()
+        self._episode_manager = EpisodeManager(self._step_buffer)
         self._transition_buffer = transition_buffer
         self._transition_factory = transition_factory
         self._batch_factory = BatchFactory(
-            episode_manager=self._episode_manager,
+            step_buffer=self._step_buffer,
             transition_buffer=transition_buffer,
         )
         self._step_collector = StepCollector(
@@ -64,7 +67,7 @@ class Kiox:
         self._episode_manager.copy_from(kiox.episode_manager)
 
     def save(self, f: BinaryIO) -> None:
-        dump_memory(f, self._episode_manager)
+        dump_memory(f, self._episode_manager.episodes)
 
     def load(self, f: BinaryIO) -> None:
         load_memory(f, self._step_collector)

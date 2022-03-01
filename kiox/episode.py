@@ -2,55 +2,51 @@ from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 
-from .step import Step
+from .step import Step, StepBuffer
 
 
 class Episode:
-    _buffer: List[Step]
-    _index: Dict[int, int]
-    _prev_index: Dict[int, int]
-    _next_index: Dict[int, int]
+    _buffer: StepBuffer
+    _idx_list: List[int]
+    _prev_idx: Dict[int, int]
+    _next_idx: Dict[int, int]
     _prev_step: Optional[Step]
-    _cursor: int
 
-    def __init__(self) -> None:
-        self._buffer = []
-        self._index = {}
-        self._prev_index = {}
-        self._next_index = {}
+    def __init__(self, step_buffer: StepBuffer) -> None:
+        self._buffer = step_buffer
+        self._idx_list = []
+        self._prev_idx = {}
+        self._next_idx = {}
         self._prev_step = None
-        self._cursor = 0
 
     def append(self, step: Step) -> None:
         self._buffer.append(step)
-        self._index[step.idx] = self._cursor
+        self._idx_list.append(step.idx)
         if self._prev_step:
-            self._prev_index[step.idx] = self._index[self._prev_step.idx]
-            self._next_index[self._prev_step.idx] = self._cursor
-        self._cursor += 1
+            self._prev_idx[step.idx] = self._prev_step.idx
+            self._next_idx[self._prev_step.idx] = step.idx
         self._prev_step = step
 
     def get(self, idx: int) -> Step:
-        assert idx in self._index, f"Step(idx={idx}) does not exist"
-        return self._buffer[self._index[idx]]
+        return self._buffer.get(idx)
 
     def get_by_index(self, index: int) -> Step:
-        return self._buffer[index]
+        return self._buffer.get(self._idx_list[index])
 
     def get_next(self, idx: int, duration: int = 1) -> Optional[Step]:
         next_idx = idx
         for _ in range(duration):
-            if next_idx not in self._next_index:
+            if next_idx not in self._next_idx:
                 return None
-            next_idx = self._buffer[self._next_index[next_idx]].idx
+            next_idx = self._next_idx[next_idx]
         return self.get(next_idx)
 
     def get_prev(self, idx: int, duration: int = 1) -> Optional[Step]:
         prev_idx = idx
         for _ in range(duration):
-            if prev_idx not in self._prev_index:
+            if prev_idx not in self._prev_idx:
                 return None
-            prev_idx = self._buffer[self._prev_index[prev_idx]].idx
+            prev_idx = self._prev_idx[prev_idx]
         return self.get(prev_idx)
 
     def compute_return(
@@ -62,41 +58,38 @@ class Episode:
             reward = self.get(next_idx).reward
             assert isinstance(reward, (float, np.ndarray))
             ret += (gamma**i) * reward
-            if next_idx in self._next_index:
-                next_idx = self._next_index[next_idx]
+            if next_idx in self._next_idx:
+                next_idx = self._next_idx[next_idx]
             else:
                 break
         return ret
 
     def size(self) -> int:
-        return len(self._buffer)
+        return len(self._idx_list)
 
     def includes(self, idx: int) -> bool:
-        return idx in self._index
+        return idx in self._idx_list
 
     @property
     def steps(self) -> Sequence[Step]:
-        return self._buffer
+        return [self._buffer.get(idx) for idx in self._idx_list]
 
 
 class EpisodeManager:
+    _step_buffer: StepBuffer
     _episodes: List[Episode]
     _step_to_episode: Dict[int, Episode]
-    _episode_to_step: Dict[Episode, List[int]]
     _dropped_step: Dict[Episode, List[int]]
 
-    def __init__(self) -> None:
-        self._episodes = [Episode()]
+    def __init__(self, step_buffer: StepBuffer) -> None:
+        self._step_buffer = step_buffer
+        self._episodes = [Episode(step_buffer)]
         self._step_to_episode = {}
-        self._episode_to_step = {}
         self._dropped_step = {}
 
     def append(self, step: Step) -> None:
         self.active_episode.append(step)
         self._step_to_episode[step.idx] = self.active_episode
-        if self.active_episode not in self._episode_to_step:
-            self._episode_to_step[self.active_episode] = []
-        self._episode_to_step[self.active_episode].append(step.idx)
 
     def get_step_by_idx(self, idx: int) -> Step:
         return self._step_to_episode[idx].get(idx)
@@ -105,7 +98,7 @@ class EpisodeManager:
         return self._step_to_episode[idx]
 
     def clip_episode(self) -> None:
-        self._episodes.append(Episode())
+        self._episodes.append(Episode(self._step_buffer))
 
     def drop_step(self, idx: int) -> None:
         # get corresponding episode
@@ -118,14 +111,17 @@ class EpisodeManager:
         # drop episode if necessary
         if len(self._dropped_step[episode]) == episode.size():
             assert episode is not self.active_episode
-            del self._dropped_step[episode]
-            self.drop(episode)
 
-    def drop(self, episode: Episode) -> None:
-        for idx in self._episode_to_step[episode]:
-            del self._step_to_episode[idx]
-        del self._episode_to_step[episode]
-        self._episodes.pop(self._episodes.index(episode))
+            # drop from StepBuffer and step-to-episode mapping
+            for step in episode.steps:
+                del self._step_to_episode[step.idx]
+                self._step_buffer.drop(step.idx)
+
+            # drop from dropped mapping
+            del self._dropped_step[episode]
+
+            # drop episode
+            self._episodes.pop(self._episodes.index(episode))
 
     def copy_from(self, episode_manager: "EpisodeManager") -> None:
         for episode in episode_manager.episodes:

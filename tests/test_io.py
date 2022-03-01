@@ -3,6 +3,7 @@ import os
 
 from kiox.episode import EpisodeManager
 from kiox.io import dump_memory, load_memory
+from kiox.step import StepBuffer
 from kiox.step_collector import StepCollector
 from kiox.transition_buffer import UnlimitedTransitionBuffer
 from kiox.transition_factory import SimpleTransitionFactory
@@ -12,7 +13,7 @@ from .utility import StepFactory
 
 def test_dump_memory_and_load_memory():
     factory = StepFactory()
-    episode_manager = EpisodeManager()
+    episode_manager = EpisodeManager(StepBuffer())
 
     for _ in range(9):
         episode_manager.append(factory())
@@ -20,9 +21,9 @@ def test_dump_memory_and_load_memory():
 
     # test dump_memory
     io_byte = io.BytesIO()
-    dump_memory(io_byte, episode_manager)
+    dump_memory(io_byte, episode_manager.episodes)
 
-    episode_manager2 = EpisodeManager()
+    episode_manager2 = EpisodeManager(StepBuffer())
     transition_buffer = UnlimitedTransitionBuffer()
     transition_factory = SimpleTransitionFactory()
     step_collector = StepCollector(

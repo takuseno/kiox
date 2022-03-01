@@ -1,6 +1,6 @@
 from concurrent import futures
 from multiprocessing import Process, Queue
-from typing import Any, Callable, Dict, Sequence, Union
+from typing import Any, Callable, Dict, List, Sequence, Union
 
 import grpc
 
@@ -10,8 +10,9 @@ from kiox.distributed.proto.step_pb2_grpc import (
 )
 
 from ..batch_factory import Batch
-from ..episode import EpisodeManager
+from ..episode import Episode, EpisodeManager
 from ..io import dump_memory, load_memory
+from ..step import StepBuffer
 from ..step_collector import StepCollector
 from ..transition_buffer import TransitionBuffer
 from ..transition_factory import TransitionFactory
@@ -19,9 +20,11 @@ from .proto.step_pb2 import StepProto, StepReply
 from .shared_batch_factory import SharedBatchFactory
 from .utility import convert_proto_to_item
 
+IDX_OFFSET = 100000000
+
 
 class KioxStepServiceServicer(StepServiceServicer):  # type: ignore
-    _episode_manager: EpisodeManager
+    _step_buffer: StepBuffer
     _transition_buffer: TransitionBuffer
     _transition_factory: TransitionFactory
     _step_collectors: Dict[int, StepCollector]
@@ -30,13 +33,13 @@ class KioxStepServiceServicer(StepServiceServicer):  # type: ignore
 
     def __init__(
         self,
-        episode_manager: EpisodeManager,
+        step_buffer: StepBuffer,
         transition_buffer: TransitionBuffer,
         transition_factory: TransitionFactory,
         n_steps: int = 1,
         gamma: float = 0.99,
     ):
-        self._episode_manager = episode_manager
+        self._step_buffer = step_buffer
         self._transition_buffer = transition_buffer
         self._transition_factory = transition_factory
         self._step_collectors = {}
@@ -52,11 +55,12 @@ class KioxStepServiceServicer(StepServiceServicer):  # type: ignore
 
         if rollout_id not in self._step_collectors:
             self._step_collectors[rollout_id] = StepCollector(
-                episode_manager=self._episode_manager,
+                episode_manager=EpisodeManager(self._step_buffer),
                 transition_buffer=self._transition_buffer,
                 transition_factory=self._transition_factory,
                 n_steps=self._n_steps,
                 gamma=self._gamma,
+                idx_offset=len(self._step_collectors) * IDX_OFFSET,
             )
 
         self._step_collectors[rollout_id].collect(
@@ -70,6 +74,10 @@ class KioxStepServiceServicer(StepServiceServicer):  # type: ignore
             self._step_collectors[rollout_id].clip_episode()
 
         return StepReply(status="success")
+
+    @property
+    def episode_managers(self) -> Sequence[EpisodeManager]:
+        return [sc.episode_manager for sc in self._step_collectors.values()]
 
 
 ACK_START = "start"
@@ -97,13 +105,13 @@ def kiox_server_process(
     n_steps: int = 1,
     gamma: float = 0.99,
 ) -> None:
-    episode_manager = EpisodeManager()
+    step_buffer = StepBuffer()
     transition_buffer = transition_buffer_builder()
     transition_factory = transition_factory_builder()
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=max_workers))
     servicer = KioxStepServiceServicer(
-        episode_manager=episode_manager,
+        step_buffer=step_buffer,
         transition_buffer=transition_buffer,
         transition_factory=transition_factory,
         n_steps=n_steps,
@@ -121,29 +129,33 @@ def kiox_server_process(
         if command == COMMAND_STOP:
             break
         if command == COMMAND_GET_STEP_LEN:
-            ack_queue.put(str(episode_manager.get_total_step_size()))
+            ack_queue.put(str(step_buffer.size()))
         elif command == COMMAND_GET_TRANSITION_LEN:
             ack_queue.put(str(transition_buffer.size()))
         elif command == COMMAND_SAVE:
             path = command_queue.get()
+            episodes: List[Episode] = []
+            for episode_manager in servicer.episode_managers:
+                episodes.extend(episode_manager.episodes)
             with open(path, "wb") as f:
-                dump_memory(f, episode_manager)
+                dump_memory(f, episodes)
             ack_queue.put(ACK_SAVED)
         elif command == COMMAND_LOAD:
             path = command_queue.get()
             with open(path, "rb") as f:
                 # create a temporary StepCollector
                 step_collector = StepCollector(
-                    episode_manager=episode_manager,
+                    episode_manager=EpisodeManager(step_buffer),
                     transition_buffer=transition_buffer,
                     transition_factory=transition_factory,
                     n_steps=n_steps,
                     gamma=gamma,
+                    idx_offset=len(servicer.episode_managers) * IDX_OFFSET,
                 )
                 load_memory(f, step_collector)
             ack_queue.put(ACK_LOADED)
         elif command == COMMAND_SAMPLE:
-            batch_factory.sample(episode_manager, transition_buffer)
+            batch_factory.sample(step_buffer, transition_buffer)
             ack_queue.put(ACK_SAMPLED)
         else:
             raise ValueError(f"invalid command: {command}")

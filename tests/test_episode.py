@@ -1,11 +1,12 @@
 from kiox.episode import Episode, EpisodeManager
+from kiox.step import StepBuffer
 
 from .utility import StepFactory
 
 
 def test_episode():
     factory = StepFactory()
-    episode = Episode()
+    episode = Episode(StepBuffer())
     steps = []
 
     for i in range(10):
@@ -33,7 +34,7 @@ def test_episode():
 
 def test_episode_manager():
     factory = StepFactory()
-    episode_manager = EpisodeManager()
+    episode_manager = EpisodeManager(StepBuffer())
     steps = []
 
     for i in range(10):
@@ -46,7 +47,7 @@ def test_episode_manager():
     assert episode_manager.get_step_by_idx(steps[0].idx) is steps[0]
 
     # test copy_from
-    dst = EpisodeManager()
+    dst = EpisodeManager(StepBuffer())
     dst.copy_from(episode_manager)
     assert dst.episodes[0].size() == len(steps)
 

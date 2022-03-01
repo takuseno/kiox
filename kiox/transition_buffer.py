@@ -5,7 +5,7 @@ from typing import Deque, List, Optional, Sequence
 import numpy as np
 from typing_extensions import Protocol
 
-from .episode import EpisodeManager
+from .step import StepBuffer
 from .transition import LazyTransition, Transition
 
 
@@ -18,7 +18,7 @@ class TransitionBuffer(Protocol):
     def get_by_index(self, index: int) -> LazyTransition:
         raise NotImplementedError
 
-    def sample(self, episode_manager: EpisodeManager) -> Transition:
+    def sample(self, step_buffer: StepBuffer) -> Transition:
         raise NotImplementedError
 
     def size(self) -> int:
@@ -47,9 +47,9 @@ class UnlimitedTransitionBuffer(TransitionBuffer):
     def get_by_index(self, index: int) -> LazyTransition:
         return self._buffer[index]
 
-    def sample(self, episode_manager: EpisodeManager) -> Transition:
+    def sample(self, step_buffer: StepBuffer) -> Transition:
         index = int(np.random.randint(len(self._buffer)))
-        return self._buffer[index].create(episode_manager)
+        return self._buffer[index].create(step_buffer)
 
     def size(self) -> int:
         return len(self._buffer)
@@ -85,9 +85,9 @@ class FIFOTransitionBuffer(TransitionBuffer):
     def get_by_index(self, index: int) -> LazyTransition:
         return self._buffer[index]
 
-    def sample(self, episode_manager: EpisodeManager) -> Transition:
+    def sample(self, step_buffer: StepBuffer) -> Transition:
         index = int(np.random.randint(len(self._buffer)))
-        return self._buffer[index].create(episode_manager)
+        return self._buffer[index].create(step_buffer)
 
     def size(self) -> int:
         return len(self._buffer)

@@ -2,16 +2,15 @@ import numpy as np
 import pytest
 
 from kiox.episode import EpisodeManager
+from kiox.step import StepBuffer
 from kiox.step_collector import StepCollector
 from kiox.transition_buffer import UnlimitedTransitionBuffer
 from kiox.transition_factory import SimpleTransitionFactory
 
-from .utility import StepFactory, TransitionFactory
-
 
 @pytest.mark.parametrize("n_steps", [1, 3])
 def test_step_collector(n_steps):
-    episode_manager = EpisodeManager()
+    episode_manager = EpisodeManager(StepBuffer())
     transition_buffer = UnlimitedTransitionBuffer()
     transition_factory = SimpleTransitionFactory()
     step_collector = StepCollector(

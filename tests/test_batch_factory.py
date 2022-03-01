@@ -15,7 +15,7 @@ def test_batch_factory(observation_shape):
         transition = factory()
         buffer.append(transition)
 
-    batch_factory = BatchFactory(factory.episode_manager, buffer)
+    batch_factory = BatchFactory(factory.step_buffer, buffer)
 
     batch = batch_factory.sample(32)
     assert batch.observations.shape == (32,) + observation_shape
