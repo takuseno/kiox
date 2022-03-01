@@ -53,15 +53,11 @@ class KioxStepServiceServicer(StepServiceServicer):  # type: ignore
         timeout = request.timeout
         rollout_id = request.rollout_id
 
+        if rollout_id < 0:
+            return StepReply(status="rollout_id must be positive integer.")
+
         if rollout_id not in self._step_collectors:
-            self._step_collectors[rollout_id] = StepCollector(
-                episode_manager=EpisodeManager(self._step_buffer),
-                transition_buffer=self._transition_buffer,
-                transition_factory=self._transition_factory,
-                n_steps=self._n_steps,
-                gamma=self._gamma,
-                idx_offset=len(self._step_collectors) * IDX_OFFSET,
-            )
+            self.append_step_collector(rollout_id, self._step_buffer)
 
         self._step_collectors[rollout_id].collect(
             observation=observation,
@@ -74,6 +70,27 @@ class KioxStepServiceServicer(StepServiceServicer):  # type: ignore
             self._step_collectors[rollout_id].clip_episode()
 
         return StepReply(status="success")
+
+    def append_step_collector(
+        self, rollout_id: int, step_buffer: StepBuffer
+    ) -> None:
+        assert rollout_id not in self._step_collectors
+        self._step_collectors[rollout_id] = StepCollector(
+            episode_manager=EpisodeManager(step_buffer),
+            transition_buffer=self._transition_buffer,
+            transition_factory=self._transition_factory,
+            n_steps=self._n_steps,
+            gamma=self._gamma,
+            idx_offset=len(self._step_collectors) * IDX_OFFSET,
+        )
+
+    def get_step_collector_by_rollout_id(
+        self, rollout_id: int
+    ) -> StepCollector:
+        return self._step_collectors[rollout_id]
+
+    def has_step_collector(self, rollout_id: int) -> bool:
+        return rollout_id in self._step_collectors
 
     @property
     def episode_managers(self) -> Sequence[EpisodeManager]:
@@ -143,16 +160,10 @@ def kiox_server_process(
         elif command == COMMAND_LOAD:
             path = command_queue.get()
             with open(path, "rb") as f:
-                # create a temporary StepCollector
-                step_collector = StepCollector(
-                    episode_manager=EpisodeManager(step_buffer),
-                    transition_buffer=transition_buffer,
-                    transition_factory=transition_factory,
-                    n_steps=n_steps,
-                    gamma=gamma,
-                    idx_offset=len(servicer.episode_managers) * IDX_OFFSET,
-                )
-                load_memory(f, step_collector)
+                # create a special StepCollector
+                if not servicer.has_step_collector(-1):
+                    servicer.append_step_collector(-1, step_buffer)
+                load_memory(f, servicer.get_step_collector_by_rollout_id(-1))
             ack_queue.put(ACK_LOADED)
         elif command == COMMAND_SAMPLE:
             batch_factory.sample(step_buffer, transition_buffer)

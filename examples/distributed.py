@@ -51,6 +51,7 @@ def main():
 
     print(server.get_step_buffer_size())
     print(server.sample())
+    print(server.sample())
 
     server.stop()
 
