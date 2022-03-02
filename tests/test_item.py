@@ -1,6 +1,11 @@
 import numpy as np
 
-from kiox.item import stack_items, zeros_like
+from kiox.item import (
+    locate_stacked_item,
+    sizeof_stacked_item,
+    stack_items,
+    zeros_like,
+)
 
 
 def test_stack_items_float():
@@ -46,3 +51,32 @@ def test_zeros_like_tuple():
     assert zero[1].shape == (3, 84, 84)
     assert np.all(zero[0] == 0.0)
     assert np.all(zero[1] == 0.0)
+
+
+def test_sizeof_stacked_item_ndarray():
+    stacked_item = np.random.random((10, 3, 84, 84))
+    assert sizeof_stacked_item(stacked_item) == 10
+
+
+def test_sizeof_stacked_item_tuple():
+    stacked_item = (
+        np.random.random((10, 100)),
+        np.random.random((10, 3, 84, 84)),
+    )
+    assert sizeof_stacked_item(stacked_item) == 10
+
+
+def test_locate_stacked_item_ndarray():
+    stacked_item = np.random.random((10, 3, 84, 84))
+    assert np.all(locate_stacked_item(stacked_item, 0) == stacked_item[0])
+
+
+def test_locate_stacked_item_tuple():
+    stacked_item = (
+        np.random.random((10, 100)),
+        np.random.random((10, 3, 84, 84)),
+    )
+    ref = (stacked_item[0][0], stacked_item[1][0])
+    loc = locate_stacked_item(stacked_item, 0)
+    assert np.all(loc[0] == ref[0])
+    assert np.all(loc[1] == ref[1])

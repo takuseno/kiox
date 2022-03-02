@@ -34,3 +34,22 @@ def zeros_like(item: Item) -> Item:
     else:
         raise ValueError(f"unrecognized item type: {type(item)}")
     return zeros
+
+
+def sizeof_stacked_item(stacked_item: StackedItem) -> int:
+    if isinstance(stacked_item, (list, tuple)):
+        size = len(stacked_item[0])
+        for item in stacked_item[1:]:
+            assert item.shape[0] == size, "all elements must have same size."
+        return size
+    else:
+        assert isinstance(stacked_item, np.ndarray)
+        return int(stacked_item.shape[0])
+
+
+def locate_stacked_item(stacked_item: StackedItem, index: int) -> Item:
+    if isinstance(stacked_item, (list, tuple)):
+        return [item[index] for item in stacked_item]
+    else:
+        assert isinstance(stacked_item, np.ndarray)
+        return stacked_item[index]
