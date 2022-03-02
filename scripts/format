@@ -10,4 +10,4 @@ fi
 
 isort -l 80 --profile black $ISORT_ARG kiox tests --skip-gitignore
 
-black -l 80 $BLACK_ARG kiox tests --exclude ".*pb2.*\.py"
+black -l 80 $BLACK_ARG kiox tests examples --exclude ".*pb2.*\.py"
