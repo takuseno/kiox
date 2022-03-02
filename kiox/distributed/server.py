@@ -24,6 +24,20 @@ IDX_OFFSET = 100000000
 
 
 class KioxStepServiceServicer(StepServiceServicer):  # type: ignore
+    """KioxStepServiceServicer class.
+
+    This class is a gRPC endpoint to receive remote steps.
+
+    Args:
+        step_buffer: StepBuffer object.
+        transition_buffer: TransitionBuffer object.
+        transition_factory: TransitionFactory object.
+        n_steps: step size for multi-step learning. This corresponds to TD(N).
+        gamma: discounted factor. If ``n_steps=1``, this value does not make
+            any difference.
+
+    """
+
     _step_buffer: StepBuffer
     _transition_buffer: TransitionBuffer
     _transition_factory: TransitionFactory
@@ -47,6 +61,20 @@ class KioxStepServiceServicer(StepServiceServicer):  # type: ignore
         self._gamma = gamma
 
     def Send(self, request: StepProto, context: Any) -> StepReply:
+        """gRPC endpooint for Send.
+
+        This endpoint receives experience tuples with ``rollout_id`` parameter.
+        If there are no tuples from ``rollout_id``, new ``StepCollector`` will
+        be created.
+
+        Args:
+            request: protocol buffer step.
+            context: context info.
+
+        Returns:
+            protocol buffer reply.
+
+        """
         observation = convert_proto_to_item(request.observation)
         action = convert_proto_to_item(request.action)
         reward = convert_proto_to_item(request.reward)
@@ -74,6 +102,13 @@ class KioxStepServiceServicer(StepServiceServicer):  # type: ignore
     def append_step_collector(
         self, rollout_id: int, step_buffer: StepBuffer
     ) -> None:
+        """Creates StepCollector object for ``rollout_id``.
+
+        Args:
+            rollout_id: rollout worker id.
+            step_buffer: StepBuffer object.
+
+        """
         assert rollout_id not in self._step_collectors
         self._step_collectors[rollout_id] = StepCollector(
             episode_manager=EpisodeManager(step_buffer),
@@ -87,9 +122,27 @@ class KioxStepServiceServicer(StepServiceServicer):  # type: ignore
     def get_step_collector_by_rollout_id(
         self, rollout_id: int
     ) -> StepCollector:
+        """Returns StepCollector by specified ``rollout_id``.
+
+        Args:
+            rollout_id: rollout worker id.
+
+        Returns:
+            StepCollector object.
+
+        """
         return self._step_collectors[rollout_id]
 
     def has_step_collector(self, rollout_id: int) -> bool:
+        """Returns if StepCollector object exists for ``rollout_id``.
+
+        Args:
+            rollout_id: rollout worker id.
+
+        Returns:
+            ``True`` if StepCollector exists for ``rollout_id``.
+
+        """
         return rollout_id in self._step_collectors
 
     @property
@@ -122,6 +175,22 @@ def kiox_server_process(
     n_steps: int = 1,
     gamma: float = 0.99,
 ) -> None:
+    """Child process for server loop.
+
+    Args:
+        host: host address.
+        port: port number.
+        batch_factory: SharedBatchFactory object.
+        command_queue: queue from parent process.
+        ack_queue: queue from child process.
+        transition_buffer_builder: function to build TransitionBuffer object.
+        transition_factory_builder: function to build TransitionFactory object.
+        max_workers: maximum number of threads for gRPC.
+        n_steps: step size for multi-step learning. This corresponds to TD(N).
+        gamma: discounted factor. If ``n_steps=1``, this value does not make
+            any difference.
+
+    """
     step_buffer = StepBuffer()
     transition_buffer = transition_buffer_builder()
     transition_factory = transition_factory_builder()
@@ -178,6 +247,86 @@ def kiox_server_process(
 
 
 class KioxServer:
+    """KioxServer class.
+
+    This class launches gRPC server in a child process to receive remote steps
+    and samples mini-batch.
+
+    .. code-block:: python
+
+        def rollout():
+            sender = StepSender("localhost", 8000, 1)
+            env = gym.make("CartPole-v0")
+
+            for _ in range(1000):
+                obs = env.reset()
+                while True:
+                    action = np.random.randint(2)
+                    next_obs, reward, terminal, _ = env.step(action)
+                    sender.collect(
+                        observation=obs.astype(np.float32),
+                        action=action,
+                        reward=reward,
+                        terminal=terminal,
+                    )
+                    if terminal:
+                        break
+                    obs = next_obs
+            sender.stop()
+
+        server = KioxServer(
+            host="localhost",
+            port=8000,
+            observation_shape=(4,),
+            action_shape=(1,),
+            reward_shape=(1,),
+            batch_size=32,
+            transition_buffer_builder=lambda: FIFOTransitionBuffer(1000),
+            transition_factory_builder=lambda: SimpleTransitionFactory(),
+        )
+        server.start()
+
+        # start rollout
+        p = Process(target=rollout)
+        p.start()
+
+        # sample mini-batch
+        batch = server.sample()
+        assert batch.observations.shape == (32, 4)
+
+        # save data
+        server.save("data.h5")
+
+        # load data
+        server2 = KioxServer(
+            host="localhost",
+            port=9000,
+            observation_shape=(4,),
+            action_shape=(1,),
+            reward_shape=(1,),
+            batch_size=32,
+            transition_buffer_builder=lambda: FIFOTransitionBuffer(1000),
+            transition_factory_builder=lambda: SimpleTransitionFactory(),
+        )
+        server2.start()
+        server2.load("data.h5")
+
+    Args:
+        host: host address.
+        port: port number.
+        observation_shape: shape of observation.
+        action_shape: shape of action.
+        reward_shape: shape of reward.
+        batch_size: batch size.
+        transition_buffer_builder: function to build TransitionBuffer object.
+        transition_factory_builder: function to build TransitionFactory object.
+        max_workers: maximum number of workers for gRPC.
+        n_steps: step size for multi-step learning. This corresponds to TD(N).
+        gamma: discounted factor. If ``n_steps=1``, this value does not make
+            any difference.
+
+    """
+
     _batch_factory: SharedBatchFactory
     _process: Process
     _command_queue: "Queue[str]"
@@ -223,32 +372,64 @@ class KioxServer:
         )
 
     def start(self) -> None:
+        """Starts gRPC server process."""
         self._process.start()
         self._ack_queue.get()
 
     def stop(self) -> None:
+        """Stops gRPC server process."""
         self._command_queue.put(COMMAND_STOP)
         self._ack_queue.get()
 
     def get_step_buffer_size(self) -> int:
+        """Returns number of stored steps.
+
+        Returns:
+            number of stored steps.
+
+        """
         self._command_queue.put(COMMAND_GET_STEP_LEN)
         return int(self._ack_queue.get())
 
     def get_transition_buffer_size(self) -> int:
+        """Returns number of stored transitions.
+
+        Returns:
+            number of stored transitions.
+
+        """
         self._command_queue.put(COMMAND_GET_TRANSITION_LEN)
         return int(self._ack_queue.get())
 
     def sample(self) -> Batch:
+        """Samples transitions and returns mini-batch.
+
+        Returns:
+            mini-batch.
+
+        """
         self._command_queue.put(COMMAND_SAMPLE)
         self._ack_queue.get()
         return self._batch_factory.batch
 
     def save(self, path: str) -> None:
+        """Saves data as HDF5 file to disk.
+
+        Args:
+            path: path to save.
+
+        """
         self._command_queue.put(COMMAND_SAVE)
         self._command_queue.put(path)
         self._ack_queue.get()
 
     def load(self, path: str) -> None:
+        """Loads HDF5 data from disk.
+
+        Args:
+            path: path to load.
+
+        """
         self._command_queue.put(COMMAND_LOAD)
         self._command_queue.put(path)
         self._ack_queue.get()

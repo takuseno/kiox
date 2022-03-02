@@ -32,6 +32,16 @@ def _copy_array(
 
 
 class SharedBatchFactory:
+    """SharedBatchFactory class.
+
+    Args:
+        observation_shape: shape of observation.
+        action_shape: shape of action.
+        reward_shape: shape of reward.
+        batch_size: batch size.
+
+    """
+
     _batch_size: int
     _batch: Batch
 
@@ -69,6 +79,14 @@ class SharedBatchFactory:
         transition_buffer: TransitionBuffer,
         max_pararellism: Optional[int] = None,
     ) -> None:
+        """Samples transitions and copies mini-batch to shared memory.
+
+        Args:
+            step_buffer: StepBuffer object.
+            transition_buffer: TransitionBuffer object.
+            max_pararellism: maximum number of threads to sample.
+
+        """
         # sampling
         factory = BatchFactory(
             step_buffer=step_buffer,

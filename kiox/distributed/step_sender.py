@@ -13,6 +13,17 @@ from .utility import convert_item_to_proto
 
 @dataclasses.dataclass(frozen=True)
 class StepData:
+    """StepData data class.
+
+    Args:
+        observation: observation.
+        action: action.
+        reward: reward.
+        terminal: terminal flag.
+        timeout: timeout flag.
+
+    """
+
     observation: Item
     action: Item
     reward: Item
@@ -21,6 +32,32 @@ class StepData:
 
 
 class StepSender:
+    """StepSender class.
+
+    This class sends experience tuples via gRPC.
+
+    .. code-block:: python
+
+        sender = StepSender("localhost", 8000, 1)
+        env = gym.make("CartPole-v0")
+
+        obs = env.reset()
+        while True:
+            action = np.random.randint(2)
+            next_obs, reward, terminal, _ = env.step(action)
+            sender.collect(obs.astype(np.float32), action, reward, terminal)
+            if terminal:
+                break
+            obs = next_obs
+        sender.stop()
+
+    Args:
+        host: host address.
+        port: port number.
+        rollout_id: unique rollout worker id.
+
+    """
+
     _queue: "Queue[Optional[StepData]]"
     _thread: Thread
 
@@ -41,6 +78,16 @@ class StepSender:
         terminal: Union[float, bool],
         timeout: Optional[bool] = None,
     ) -> None:
+        """Sends experience tuple via gRPC.
+
+        Args:
+            observation: observation.
+            action: action.
+            reward: reward.
+            terminal: terminal flag.
+            timeout: timeout flag.
+
+        """
         if not isinstance(terminal, float):
             terminal = float(terminal)
         step_data = StepData(
@@ -80,5 +127,6 @@ class StepSender:
             stub.Send(step)
 
     def stop(self) -> None:
+        """Stops gRPC thread."""
         self._queue.put(None)
         self._thread.join()
