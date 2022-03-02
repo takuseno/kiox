@@ -7,6 +7,13 @@ from .step_collector import StepCollector
 
 
 def dump_memory(f: BinaryIO, episodes: Sequence[Episode]) -> None:
+    """Dumps data as HDF5.
+
+    Args:
+        f: I/O-like object.
+        episodes: list of episodes.
+
+    """
     observations = []
     actions = []
     rewards = []
@@ -35,6 +42,13 @@ def dump_memory(f: BinaryIO, episodes: Sequence[Episode]) -> None:
 
 
 def load_memory(f: BinaryIO, step_collector: StepCollector) -> None:
+    """Loads HDF5 data.
+
+    Args:
+        f: I/O-like object.
+        step_collector: StepCollector object.
+
+    """
     with h5py.File(f, "r") as h5:
         observations = h5["observations"][()]
         actions = h5["actions"][()]

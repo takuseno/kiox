@@ -9,6 +9,22 @@ from .transition_factory import TransitionFactory
 
 
 class StepCollector:
+    """StepCollector class.
+
+    This class takes a single stream of experience tuples.
+    The given tuples are converted to Step object and LazyTransition object.
+
+    Args:
+        episode_manager: EpisodeManager object.
+        transition_buffer: TransitionBuffer object.
+        transition_factory: TransitionFactory object.
+        n_steps: step size for multi-step learning. This corresponds to TD(N).
+        gamma: discounted factor. If ``n_steps=1``, this value does not make
+            any difference.
+        idx_offset: offset of step idx.
+
+    """
+
     _transition_buffer: TransitionBuffer
     _transition_factory: TransitionFactory
     _episode_manager: EpisodeManager
@@ -39,6 +55,16 @@ class StepCollector:
         terminal: float,
         timeout: Optional[bool] = None,
     ) -> None:
+        """Stores experience tuples and Step and Transition.
+
+        Args:
+            observation: observation.
+            action: action.
+            reward: reward.
+            terminal: terminal flag.
+            timeout: timeout flag.
+
+        """
         step = Step(
             idx=self._idx,
             observation=observation,
@@ -83,6 +109,12 @@ class StepCollector:
             self.clip_episode()
 
     def clip_episode(self) -> None:
+        """Clips active episode.
+
+        This method should be called whenever the current episode reaches
+        timeout or terminated.
+
+        """
         self._episode_manager.clip_episode()
 
     def _append_transition(self, transition: LazyTransition) -> None:

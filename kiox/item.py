@@ -7,6 +7,44 @@ StackedItem = Union[np.ndarray, Sequence[np.ndarray]]
 
 
 def stack_items(items: Sequence[Item]) -> StackedItem:
+    """Stacks a sequence of items.
+
+    In case of ``int`` or ``float`` sequence:
+
+    .. code-block:: python
+
+        items = [1.0, 2.0, 3.0]
+        stacked_item = stack_items(items)
+        assert stacked_item.shape == (3, 1)
+
+    In case of ``np.ndarray``:
+
+    .. code-block:: python
+
+        items = [np.random.random(4), np.random.random(4)]
+        stacked_item = stacked_items(items)
+        assert stacked_items.shape == (2, 4)
+
+    In case of a list of sequences:
+
+    .. code-block:: python
+
+        items = [
+            (np.random.random(2), np.random.random(4)),
+            (np.random.random(2), np.random.random(4)),
+            (np.random.random(2), np.random.random(4)),
+        ]
+        stacked_item = stacked_items(items)
+        assert stacked_items[0].shape == (3, 2)
+        assert stacked_items[1].shape == (3, 4)
+
+    Args:
+        items: a list of items.
+
+    Returns:
+        stacked items.
+
+    """
     item = items[0]
     if isinstance(item, (int, float)):
         stacked_items = np.reshape(np.array(items), [-1, 1])
@@ -24,6 +62,15 @@ def stack_items(items: Sequence[Item]) -> StackedItem:
 
 
 def zeros_like(item: Item) -> Item:
+    """Creates identically shaped item filled with zeros.
+
+    Args:
+        item: item.
+
+    Returns:
+        item filled with zeros.
+
+    """
     zeros: Item
     if isinstance(item, (int, float)):
         zeros = 0 if isinstance(item, int) else 0.0
@@ -37,6 +84,15 @@ def zeros_like(item: Item) -> Item:
 
 
 def sizeof_stacked_item(stacked_item: StackedItem) -> int:
+    """Returns size of stacked item.
+
+    Args:
+        stacked_item: stacked items.
+
+    Returns:
+        size of sequence.
+
+    """
     if isinstance(stacked_item, (list, tuple)):
         size = len(stacked_item[0])
         for item in stacked_item[1:]:
@@ -48,6 +104,16 @@ def sizeof_stacked_item(stacked_item: StackedItem) -> int:
 
 
 def locate_stacked_item(stacked_item: StackedItem, index: int) -> Item:
+    """Returns item located by ``index``.
+
+    Args:
+        stacked_item: stacked items.
+        index: location.
+
+    Returns:
+        located item.
+
+    """
     if isinstance(stacked_item, (list, tuple)):
         return [item[index] for item in stacked_item]
     else:

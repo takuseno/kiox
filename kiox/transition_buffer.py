@@ -10,21 +10,62 @@ from .transition import LazyTransition, Transition
 
 
 class TransitionBuffer(Protocol):
+    """TransitionBuffer class."""
+
     def append(
         self, lazy_transition: LazyTransition
     ) -> Optional[LazyTransition]:
+        """Appends LazyTransition object.
+
+        Args:
+            lazy_transition: LazyTransition object.
+
+        Returns:
+            dropped LazyTransition object.
+
+        """
         raise NotImplementedError
 
     def get_by_index(self, index: int) -> LazyTransition:
+        """Returns transition by index.
+
+        Args:
+            index: transition index.
+
+        Returns:
+            LazyTransition object.
+
+        """
         raise NotImplementedError
 
     def sample(self, step_buffer: StepBuffer) -> Transition:
+        """Samples LazyTransition and returns as Transition.
+
+        Args:
+            step_buffer: StepBuffer object.
+
+        Returns:
+            Transition object.
+
+        """
         raise NotImplementedError
 
     def size(self) -> int:
+        """Returns number of stored transitions.
+
+        Returns:
+            number of stored transitions.
+
+        """
         raise NotImplementedError
 
     def copy_from(self, transition_buffer: "TransitionBuffer") -> None:
+        """Copies transitions from another TransitionBuffer.
+
+        Args:
+            transition_buffer: source TransitionBuffer object.
+
+        """
         raise NotImplementedError
 
     @property
@@ -33,6 +74,12 @@ class TransitionBuffer(Protocol):
 
 
 class UnlimitedTransitionBuffer(TransitionBuffer):
+    """UnlimitedTransitionBuffer class.
+
+    This buffer can have unlimited number of transitions.
+
+    """
+
     _buffer: List[LazyTransition]
 
     def __init__(self) -> None:
@@ -64,6 +111,15 @@ class UnlimitedTransitionBuffer(TransitionBuffer):
 
 
 class FIFOTransitionBuffer(TransitionBuffer):
+    """FIFOTransitionBuffer class.
+
+    This class stores and drops transitions in first-in-first-out order.
+
+    Args:
+        maxlen: maximum number of transitions.
+
+    """
+
     _maxlen: int
     _buffer: Deque[LazyTransition]
 

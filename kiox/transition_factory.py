@@ -12,6 +12,8 @@ from .transition import (
 
 
 class TransitionFactory(Protocol):
+    """TransitionFactory object."""
+
     def create(
         self,
         step: Step,
@@ -20,10 +22,30 @@ class TransitionFactory(Protocol):
         duration: int,
         gamma: float,
     ) -> LazyTransition:
+        """Creates LazyTransition.
+
+        Args:
+            step: Step object.
+            next_step: Step object at next step. If ``None``, ``step`` is
+                terminal state.
+            episode: Episode object including ``step`` and ``next_step``.
+            duration: the number of steps before ``next_step``.
+            gamma: discounted factor.
+
+        Returns:
+            LazyTransition object.
+
+        """
         raise NotImplementedError
 
 
 class SimpleTransitionFactory(TransitionFactory):
+    """SimpleTransitionFactory class.
+
+    This class creates SimpleLazyTransition.
+
+    """
+
     def create(
         self,
         step: Step,
@@ -41,6 +63,15 @@ class SimpleTransitionFactory(TransitionFactory):
 
 
 class FrameStackTransitionFactory(TransitionFactory):
+    """FrameStackTransitionFactory class.
+
+    This class creates FrameStackLazyTransition.
+
+    Args:
+        n_frames: number of frames to stack.
+
+    """
+
     _n_frames: int
 
     def __init__(self, n_frames: int):

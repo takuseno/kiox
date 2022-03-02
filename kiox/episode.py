@@ -6,6 +6,15 @@ from .step import Step, StepBuffer
 
 
 class Episode:
+    """Episode class.
+
+    This class represents a single episode with a sequence of steps.
+
+    Args:
+        step_buffer: StepBuffer object.
+
+    """
+
     _buffer: StepBuffer
     _idx_list: List[int]
     _prev_idx: Dict[int, int]
@@ -20,6 +29,12 @@ class Episode:
         self._prev_step = None
 
     def append(self, step: Step) -> None:
+        """Appends step.
+
+        Args:
+            step: Step object.
+
+        """
         self._buffer.append(step)
         self._idx_list.append(step.idx)
         if self._prev_step:
@@ -28,12 +43,42 @@ class Episode:
         self._prev_step = step
 
     def get(self, idx: int) -> Step:
+        """Returns step by specified idx.
+
+        Args:
+            idx: step idx.
+
+        Returns:
+            Step object.
+
+        """
         return self._buffer.get(idx)
 
     def get_by_index(self, index: int) -> Step:
+        """Returns step by specified index.
+
+        Args:
+            index: step index.
+
+        Returns:
+            Step object.
+
+        """
         return self._buffer.get(self._idx_list[index])
 
     def get_next(self, idx: int, duration: int = 1) -> Optional[Step]:
+        """Returns step ``duration`` steps ahead from ``idx``.
+
+        If there is no more steps ahead, ``None`` will be returned.
+
+        Args:
+            idx: step idx.
+            duration: the number of steps after ``idx``.
+
+        Returns:
+            Step object ``duration`` steps ahead.
+
+        """
         next_idx = idx
         for _ in range(duration):
             if next_idx not in self._next_idx:
@@ -42,6 +87,16 @@ class Episode:
         return self.get(next_idx)
 
     def get_prev(self, idx: int, duration: int = 1) -> Optional[Step]:
+        """Returns step ``duration`` steps back from ``idx``.
+
+        Args:
+            idx: step idx.
+            duration: the number of steps before ``idx``.
+
+        Returns:
+            Step object ``duration`` steps back.
+
+        """
         prev_idx = idx
         for _ in range(duration):
             if prev_idx not in self._prev_idx:
@@ -52,6 +107,17 @@ class Episode:
     def compute_return(
         self, idx: int, duration: int = 1, gamma: float = 0.99
     ) -> float:
+        """Computes discounted return for ``duration`` steps.
+
+        Args:
+            idx: origin idx.
+            duration: the number of steps after ``idx``.
+            gamma: discounted factor.
+
+        Returns:
+            discounted return.
+
+        """
         next_idx = idx
         ret = 0.0
         for i in range(duration):
@@ -65,9 +131,21 @@ class Episode:
         return ret
 
     def size(self) -> int:
+        """Returns episode length.
+
+        Returns:
+            episode length.
+
+        """
         return len(self._idx_list)
 
     def includes(self, idx: int) -> bool:
+        """Returns if ``idx`` exists in episode.
+
+        Returns:
+            ``True`` if ``idx`` exists.
+
+        """
         return idx in self._idx_list
 
     @property
@@ -76,6 +154,15 @@ class Episode:
 
 
 class EpisodeManager:
+    """EpisodeManager class.
+
+    This class takes a stream of steps and splits them into episodes.
+
+    Args:
+        step_buffer: StepBuffer object.
+
+    """
+
     _step_buffer: StepBuffer
     _episodes: List[Episode]
     _step_to_episode: Dict[int, Episode]
@@ -88,19 +175,58 @@ class EpisodeManager:
         self._dropped_step = {}
 
     def append(self, step: Step) -> None:
+        """Appends step to active episode.
+
+        Args:
+            step: Step object.
+
+        """
         self.active_episode.append(step)
         self._step_to_episode[step.idx] = self.active_episode
 
     def get_step_by_idx(self, idx: int) -> Step:
+        """Returns step by specified ``idx`.
+
+        Args:
+            idx: step idx.
+
+        Returns:
+            Step object.
+
+        """
         return self._step_to_episode[idx].get(idx)
 
     def get_episode_by_step_idx(self, idx: int) -> Episode:
+        """Returns episode including step of ``idx``.
+
+        Args:
+            idx: step idx.
+
+        Returns:
+            Episode object.
+
+        """
         return self._step_to_episode[idx]
 
     def clip_episode(self) -> None:
+        """Clips active episode.
+
+        This method should be called whenever episode reaches timeout or
+        terminated.
+
+        """
         self._episodes.append(Episode(self._step_buffer))
 
     def drop_step(self, idx: int) -> None:
+        """Virtually drops step by specified ``idx``.
+
+        This method does not actually drop the step until all steps are dropped
+        from an episode.
+
+        Args:
+            idx: step idx.
+
+        """
         # get corresponding episode
         episode = self.get_episode_by_step_idx(idx)
 
@@ -124,12 +250,24 @@ class EpisodeManager:
             self._episodes.pop(self._episodes.index(episode))
 
     def copy_from(self, episode_manager: "EpisodeManager") -> None:
+        """Copes steps from another EpisodeManager.
+
+        Args:
+            episode_manager: source episodes.
+
+        """
         for episode in episode_manager.episodes:
             for step in episode.steps:
                 self.append(step)
             self.clip_episode()
 
     def get_total_step_size(self) -> int:
+        """Returns total step size.
+
+        Returns:
+            total step size.
+
+        """
         return sum([e.size() for e in self._episodes])
 
     @property
