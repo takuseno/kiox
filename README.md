@@ -20,6 +20,13 @@ kiox.collect(<obsrvation>, <action>, <reward>, <terminal>)
 batch = kiox.sample(256)
 ```
 
+## installation
+kiox supports Linux, macOS and Windows.
+
+```
+$ pip install kiox
+```
+
 
 ## features
 ### distributed training
@@ -72,9 +79,13 @@ kiox = create_simple_kiox_from_data(
 )
 ```
 
-## TODO
-This project is in progress.
+## build
+```
+$ pip install grpcio-tools
+$ scripts/build-protobuf
+$ pip install -e .
+```
 
-- [x] gRPC server/client
-- [ ] Documentation
-- [ ] PyPi upload
+## contributions
+Any kind of contribution to kiox would be highly appreciated!
+Please check the [contribution guide](CONTRIBUTING.md).
