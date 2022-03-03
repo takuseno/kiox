@@ -5,3 +5,5 @@ coverage.xml
 kiox.egg-info
 .python-version
 kiox/distributed/proto
+test_data
+image_data

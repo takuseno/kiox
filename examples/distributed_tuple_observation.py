@@ -1,6 +1,5 @@
 from multiprocessing import Process
 
-import gym
 import numpy as np
 
 from kiox.distributed.server import KioxServer
