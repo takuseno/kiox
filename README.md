@@ -20,6 +20,18 @@ kiox.collect(<obsrvation>, <action>, <reward>, <terminal>)
 batch = kiox.sample(256)
 ```
 
+## key features
+
+### :zap: Composable experience replay buffer
+kiox is composable and fully Pythonic library. You can add your own sampling algorithms and inject sampling-time logics (e.g. loading image data from disk just before sampling).
+
+### :beginner: User-friendly API
+kiox provides user-friendly API so that you can instantly incorporate kiox with your RL algorithms.
+
+### :rocket: Distributed RL training support
+kiox supports distributed RL training by using ProtocolBuffer and gRPC. Your custom modules will work without any code changes.
+
+
 ## installation
 kiox supports Linux, macOS and Windows.
 
@@ -28,10 +40,10 @@ $ pip install kiox
 ```
 
 
-## features
-### distributed training
-See an [example](examples/distributed.py).
+## examples
+Many extensive [examples](examples) are available.
 
+### distributed training
 In actor process:
 ```py
 from kiox.distributed.step_sender import StepSender
