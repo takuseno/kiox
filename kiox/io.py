@@ -37,7 +37,7 @@ def dump_memory(f: BinaryIO, episodes: Sequence[Episode]) -> None:
         h5.create_dataset("actions", data=actions)
         h5.create_dataset("rewards", data=rewards)
         h5.create_dataset("terminals", data=terminals)
-        h5.create_dataset("timeouts", data=terminals)
+        h5.create_dataset("timeouts", data=timeouts)
         h5.flush()
 
 
