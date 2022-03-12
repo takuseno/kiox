@@ -7,3 +7,5 @@ kiox.egg-info
 kiox/distributed/proto
 test_data
 image_data
+build
+dist
