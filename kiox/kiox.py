@@ -1,5 +1,7 @@
 from typing import BinaryIO, Union
 
+from typing_extensions import Protocol
+
 from .batch_factory import Batch, BatchFactory
 from .episode import EpisodeManager
 from .io import dump_memory, load_memory
@@ -10,7 +12,85 @@ from .transition_buffer import TransitionBuffer
 from .transition_factory import TransitionFactory
 
 
-class Kiox:
+class KioxProtocol(Protocol):
+    def collect(
+        self,
+        observation: Item,
+        action: Item,
+        reward: Item,
+        terminal: Union[bool, float],
+    ) -> None:
+        """Stores experience tuple.
+
+        Args:
+            observation: observation.
+            action: action.
+            reward: reward.
+            terminal: terminal flag.
+
+        """
+
+    def get_step_buffer_size(self) -> int:
+        """Returns number of stored tuples.
+
+        Returns:
+            number of tuples.
+
+        """
+
+    def get_transition_buffer_size(self) -> int:
+        """Returns number of stored transitions.
+
+        Returns:
+            number of transitions.
+
+        """
+
+    def clip_episode(self) -> None:
+        """Clips active episode.
+
+        This method should be called whenever the current episode ends for
+        timeout.
+
+        """
+
+    def sample(self, batch_size: int) -> Batch:
+        """Samples transitions and returns mini-batch.
+
+        Args:
+            batch_size: batch size.
+
+        Returns:
+            mini-batch.
+
+        """
+
+    def copy_from(self, kiox: "KioxProtocol") -> None:
+        """Copies steps and transitions from another Kiox object.
+
+        Args:
+            kiox: source Kiox object.
+
+        """
+
+    def save(self, f: BinaryIO) -> None:
+        """Saves data as HDF5.
+
+        Args:
+            f: I/O-like object.
+
+        """
+
+    def load(self, f: BinaryIO) -> None:
+        """Loads HDF5 data.
+
+        Args:
+            f: I/O-like object.
+
+        """
+
+
+class Kiox(KioxProtocol):
     """Kiox class.
 
     This class takes a single stream of experiences.
@@ -88,15 +168,6 @@ class Kiox:
         reward: Item,
         terminal: Union[bool, float],
     ) -> None:
-        """Stores experience tuple.
-
-        Args:
-            observation: observation.
-            action: action.
-            reward: reward.
-            terminal: terminal flag.
-
-        """
         terminal = float(terminal) if isinstance(terminal, bool) else terminal
         self._step_collector.collect(
             observation=observation,
@@ -106,70 +177,26 @@ class Kiox:
         )
 
     def get_step_buffer_size(self) -> int:
-        """Returns number of stored tuples.
-
-        Returns:
-            number of tuples.
-
-        """
         return self._step_buffer.size()
 
     def get_transition_buffer_size(self) -> int:
-        """Returns number of stored transitions.
-
-        Returns:
-            number of transitions.
-
-        """
         return self._transition_buffer.size()
 
     def clip_episode(self) -> None:
-        """Clips active episode.
-
-        This method should be called whenever the current episode ends for
-        timeout.
-
-        """
         self._step_collector.clip_episode()
 
     def sample(self, batch_size: int) -> Batch:
-        """Samples transitions and returns mini-batch.
-
-        Args:
-            batch_size: batch size.
-
-        Returns:
-            mini-batch.
-
-        """
         return self._batch_factory.sample(batch_size)
 
-    def copy_from(self, kiox: "Kiox") -> None:
-        """Copies steps and transitions from another Kiox object.
-
-        Args:
-            kiox: source Kiox object.
-
-        """
+    def copy_from(self, kiox: KioxProtocol) -> None:
+        assert isinstance(kiox, Kiox)
         self._transition_buffer.copy_from(kiox.transition_buffer)
         self._episode_manager.copy_from(kiox.episode_manager)
 
     def save(self, f: BinaryIO) -> None:
-        """Saves data as HDF5.
-
-        Args:
-            f: I/O-like object.
-
-        """
         dump_memory(f, self._episode_manager.episodes)
 
     def load(self, f: BinaryIO) -> None:
-        """Loads HDF5 data.
-
-        Args:
-            f: I/O-like object.
-
-        """
         load_memory(f, self._step_collector)
 
     @property
