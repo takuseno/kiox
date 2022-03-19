@@ -5,6 +5,24 @@ from .item import Item
 
 
 @dataclasses.dataclass(frozen=True)
+class PartialStep:
+    """Step data class without idx.
+
+    Args:
+        observation: observation.
+        action: action.
+        reward: reward.
+        terminal: terminal flag.
+
+    """
+
+    observation: Item
+    action: Item
+    reward: Item
+    terminal: float
+
+
+@dataclasses.dataclass(frozen=True)
 class Step:
     """Step data class.
 
@@ -23,6 +41,14 @@ class Step:
     reward: Item
     terminal: float
 
+    def to_partial_step(self) -> PartialStep:
+        return PartialStep(
+            observation=self.observation,
+            action=self.action,
+            reward=self.reward,
+            terminal=self.terminal,
+        )
+
 
 class StepBuffer:
     """StepBuffer class."""
@@ -31,6 +57,7 @@ class StepBuffer:
 
     def __init__(self) -> None:
         self._steps = {}
+        self._counter = 0
 
     def get(self, idx: int) -> Step:
         """Returns step by specified ``idx``.
@@ -45,15 +72,27 @@ class StepBuffer:
         assert idx in self._steps, f"Step(idx={idx}) does not exist"
         return self._steps[idx]
 
-    def append(self, step: Step) -> None:
+    def append(self, partial_step: PartialStep) -> Step:
         """Appends step.
 
         Args:
-            step: Step object.
+            partial_step: PartialStep object.
+
+        Returns:
+            Step object.
 
         """
-        assert step.idx not in self._steps
-        self._steps[step.idx] = step
+        idx = self._counter
+        step = Step(
+            idx=idx,
+            observation=partial_step.observation,
+            action=partial_step.action,
+            reward=partial_step.reward,
+            terminal=partial_step.terminal,
+        )
+        self._steps[idx] = step
+        self._counter += 1
+        return self._steps[idx]
 
     def drop(self, idx: int) -> None:
         """Drops step by specified ``idx``.

@@ -20,8 +20,6 @@ from .proto.step_pb2 import StepProto, StepReply
 from .shared_batch_factory import SharedBatchFactory
 from .utility import convert_proto_to_item
 
-IDX_OFFSET = 100000000
-
 
 class KioxStepServiceServicer(StepServiceServicer):  # type: ignore
     """KioxStepServiceServicer class.
@@ -116,7 +114,6 @@ class KioxStepServiceServicer(StepServiceServicer):  # type: ignore
             transition_factory=self._transition_factory,
             n_steps=self._n_steps,
             gamma=self._gamma,
-            idx_offset=len(self._step_collectors) * IDX_OFFSET,
         )
 
     def get_step_collector_by_rollout_id(

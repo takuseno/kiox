@@ -2,7 +2,7 @@ from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 
-from .step import Step, StepBuffer
+from .step import PartialStep, Step, StepBuffer
 
 
 class Episode:
@@ -28,19 +28,23 @@ class Episode:
         self._next_idx = {}
         self._prev_step = None
 
-    def append(self, step: Step) -> None:
+    def append(self, partial_step: PartialStep) -> Step:
         """Appends step.
 
         Args:
-            step: Step object.
+            partial_step: PartialStep object.
+
+        Returns:
+            Step object.
 
         """
-        self._buffer.append(step)
+        step = self._buffer.append(partial_step)
         self._idx_list.append(step.idx)
         if self._prev_step:
             self._prev_idx[step.idx] = self._prev_step.idx
             self._next_idx[self._prev_step.idx] = step.idx
         self._prev_step = step
+        return step
 
     def get(self, idx: int) -> Step:
         """Returns step by specified idx.
@@ -174,15 +178,19 @@ class EpisodeManager:
         self._step_to_episode = {}
         self._dropped_step = {}
 
-    def append(self, step: Step) -> None:
+    def append(self, partial_step: PartialStep) -> Step:
         """Appends step to active episode.
 
         Args:
-            step: Step object.
+            partial_step: PartialStep object.
+
+        Returns:
+            Step object.
 
         """
-        self.active_episode.append(step)
+        step = self.active_episode.append(partial_step)
         self._step_to_episode[step.idx] = self.active_episode
+        return step
 
     def get_step_by_idx(self, idx: int) -> Step:
         """Returns step by specified ``idx`.
@@ -258,7 +266,7 @@ class EpisodeManager:
         """
         for episode in episode_manager.episodes:
             for step in episode.steps:
-                self.append(step)
+                self.append(step.to_partial_step())
             self.clip_episode()
 
     def get_total_step_size(self) -> int:

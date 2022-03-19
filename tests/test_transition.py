@@ -14,11 +14,9 @@ def test_simple_lazy_transition():
     step_buffer = StepBuffer()
     episode_manager = EpisodeManager(step_buffer)
 
-    step1 = factory()
-    episode_manager.append(step1)
+    step1 = episode_manager.append(factory())
 
-    step2 = factory(terminal=True)
-    episode_manager.append(step2)
+    step2 = episode_manager.append(factory(terminal=True))
 
     # test transition
     lazy_transition1 = SimpleLazyTransition(
@@ -61,8 +59,7 @@ def test_frame_stack_lazy_transition():
         frames.append(np.zeros((1, 84, 84)))
 
     for i in range(9):
-        step = factory()
-        episode_manager.append(step)
+        step = episode_manager.append(factory())
         steps.append(step)
         prev_idx.append(step.idx)
         frames.append(step.observation)
@@ -89,8 +86,7 @@ def test_frame_stack_lazy_transition():
             assert transition.terminal == 0.0
             assert transition.duration == 1
 
-    step = factory(terminal=True)
-    episode_manager.append(step)
+    step = episode_manager.append(factory(terminal=True))
     steps.append(step)
     prev_idx.append(step.idx)
     frames.append(step.observation)

@@ -10,8 +10,8 @@ def test_episode():
     steps = []
 
     for i in range(10):
-        step = factory()
-        episode.append(step)
+        partial_step = factory()
+        step = episode.append(partial_step)
         steps.append(step)
         assert episode.size() == i + 1
 
@@ -38,8 +38,8 @@ def test_episode_manager():
     steps = []
 
     for i in range(10):
-        step = factory()
-        episode_manager.append(step)
+        partial_step = factory()
+        step = episode_manager.append(partial_step)
         steps.append(step)
         assert episode_manager.active_episode.size() == i + 1
 

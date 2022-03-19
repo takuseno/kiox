@@ -7,13 +7,15 @@ def test_step_buffer():
     factory = StepFactory()
     buffer = StepBuffer()
 
-    step1 = factory()
-    buffer.append(step1)
+    partial_step1 = factory()
+    step1 = buffer.append(partial_step1)
     assert buffer.size() == 1
+    assert step1.idx == 0
 
-    step2 = factory()
-    buffer.append(step2)
+    partial_step2 = factory()
+    step2 = buffer.append(partial_step2)
     assert buffer.size() == 2
+    assert step2.idx == 1
 
     # test get
     assert buffer.get(step1.idx) is step1

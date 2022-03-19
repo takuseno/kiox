@@ -14,9 +14,7 @@ def test_simple_transition_factory():
     steps = []
 
     for _ in range(10):
-        step = factory()
-        episode.append(step)
-        steps.append(step)
+        steps.append(episode.append(factory()))
 
     transition_factory = SimpleTransitionFactory()
 
@@ -51,9 +49,7 @@ def test_frame_stack_transition_factory():
     steps = []
 
     for _ in range(10):
-        step = factory()
-        episode.append(step)
-        steps.append(step)
+        steps.append(episode.append(factory()))
 
     transition_factory = FrameStackTransitionFactory(n_frames=3)
 

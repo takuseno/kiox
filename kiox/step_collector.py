@@ -2,7 +2,7 @@ from typing import Optional
 
 from .episode import EpisodeManager
 from .item import Item
-from .step import Step
+from .step import PartialStep
 from .transition import LazyTransition
 from .transition_buffer import TransitionBuffer
 from .transition_factory import TransitionFactory
@@ -21,7 +21,6 @@ class StepCollector:
         n_steps: step size for multi-step learning. This corresponds to TD(N).
         gamma: discounted factor. If ``n_steps=1``, this value does not make
             any difference.
-        idx_offset: offset of step idx.
 
     """
 
@@ -38,14 +37,12 @@ class StepCollector:
         transition_factory: TransitionFactory,
         n_steps: int = 1,
         gamma: float = 0.99,
-        idx_offset: int = 0,
     ):
         self._episode_manager = episode_manager
         self._transition_buffer = transition_buffer
         self._transition_factory = transition_factory
         self._n_steps = n_steps
         self._gamma = gamma
-        self._idx = idx_offset
 
     def collect(
         self,
@@ -65,15 +62,13 @@ class StepCollector:
             timeout: timeout flag.
 
         """
-        step = Step(
-            idx=self._idx,
+        partial_step = PartialStep(
             observation=observation,
             action=action,
             reward=reward,
             terminal=terminal,
         )
-        self._idx += 1
-        self._episode_manager.append(step)
+        step = self._episode_manager.append(partial_step)
 
         if self._episode_manager.active_episode.size() > self._n_steps:
             last_step = self._episode_manager.active_episode.get_prev(
