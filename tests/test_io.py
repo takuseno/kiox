@@ -13,22 +13,21 @@ from .utility import StepFactory
 
 def test_dump_memory_and_load_memory():
     factory = StepFactory()
-    episode_manager = EpisodeManager(StepBuffer())
+    episode_manager = EpisodeManager(StepBuffer(), UnlimitedTransitionBuffer())
 
     for _ in range(9):
-        episode_manager.append(factory())
-    episode_manager.append(factory(terminal=True))
+        episode_manager.append_step(factory())
+    episode_manager.append_step(factory(terminal=True))
 
     # test dump_memory
     io_byte = io.BytesIO()
     dump_memory(io_byte, episode_manager.episodes)
 
-    episode_manager2 = EpisodeManager(StepBuffer())
     transition_buffer = UnlimitedTransitionBuffer()
+    episode_manager2 = EpisodeManager(StepBuffer(), transition_buffer)
     transition_factory = SimpleTransitionFactory()
     step_collector = StepCollector(
         episode_manager=episode_manager2,
-        transition_buffer=transition_buffer,
         transition_factory=transition_factory,
     )
 

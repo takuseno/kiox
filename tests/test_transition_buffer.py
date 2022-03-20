@@ -24,11 +24,6 @@ def test_unlimited_transition_buffer():
     transition = buffer.sample(factory.step_buffer)
     assert isinstance(transition, Transition)
 
-    # test copy_from
-    buffer2 = UnlimitedTransitionBuffer()
-    buffer2.copy_from(buffer)
-    assert buffer2.size() == 10
-
 
 def test_fifo_transition_buffer():
     factory = TransitionFactory(StepFactory())
@@ -46,8 +41,3 @@ def test_fifo_transition_buffer():
     # test sample
     transition = buffer.sample(factory.step_buffer)
     assert isinstance(transition, Transition)
-
-    # test copy_from
-    buffer2 = FIFOTransitionBuffer(5)
-    buffer2.copy_from(buffer)
-    assert buffer2.size() == 5

@@ -1,4 +1,4 @@
-from typing import BinaryIO, Union
+from typing import BinaryIO, Optional, Union
 
 from typing_extensions import Protocol
 
@@ -19,6 +19,7 @@ class KioxProtocol(Protocol):
         action: Item,
         reward: Item,
         terminal: Union[bool, float],
+        timeout: Optional[bool] = None,
     ) -> None:
         """Stores experience tuple.
 
@@ -27,6 +28,7 @@ class KioxProtocol(Protocol):
             action: action.
             reward: reward.
             terminal: terminal flag.
+            timeout: timeout flag.
 
         """
 
@@ -146,16 +148,18 @@ class Kiox(KioxProtocol):
         gamma: float = 0.99,
     ):
         self._step_buffer = StepBuffer()
-        self._episode_manager = EpisodeManager(self._step_buffer)
         self._transition_buffer = transition_buffer
         self._transition_factory = transition_factory
+        self._episode_manager = EpisodeManager(
+            step_buffer=self._step_buffer,
+            transition_buffer=self._transition_buffer,
+        )
         self._batch_factory = BatchFactory(
             step_buffer=self._step_buffer,
             transition_buffer=transition_buffer,
         )
         self._step_collector = StepCollector(
             episode_manager=self._episode_manager,
-            transition_buffer=transition_buffer,
             transition_factory=transition_factory,
             n_steps=n_steps,
             gamma=gamma,
@@ -167,6 +171,7 @@ class Kiox(KioxProtocol):
         action: Item,
         reward: Item,
         terminal: Union[bool, float],
+        timeout: Optional[bool] = None,
     ) -> None:
         terminal = float(terminal) if isinstance(terminal, bool) else terminal
         self._step_collector.collect(
@@ -174,6 +179,7 @@ class Kiox(KioxProtocol):
             action=action,
             reward=reward,
             terminal=terminal,
+            timeout=timeout,
         )
 
     def get_step_buffer_size(self) -> int:
@@ -190,8 +196,17 @@ class Kiox(KioxProtocol):
 
     def copy_from(self, kiox: KioxProtocol) -> None:
         assert isinstance(kiox, Kiox)
-        self._transition_buffer.copy_from(kiox.transition_buffer)
-        self._episode_manager.copy_from(kiox.episode_manager)
+        for episode in kiox.episode_manager.episodes:
+            steps = episode.steps
+            episode_length = len(steps)
+            for i, step in enumerate(steps):
+                self.collect(
+                    observation=step.observation,
+                    action=step.action,
+                    reward=step.reward,
+                    terminal=step.terminal,
+                    timeout=(i + 1) == episode_length,
+                )
 
     def save(self, f: BinaryIO) -> None:
         dump_memory(f, self._episode_manager.episodes)

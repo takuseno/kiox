@@ -3,8 +3,6 @@ from typing import Optional
 from .episode import EpisodeManager
 from .item import Item
 from .step import PartialStep
-from .transition import LazyTransition
-from .transition_buffer import TransitionBuffer
 from .transition_factory import TransitionFactory
 
 
@@ -16,7 +14,6 @@ class StepCollector:
 
     Args:
         episode_manager: EpisodeManager object.
-        transition_buffer: TransitionBuffer object.
         transition_factory: TransitionFactory object.
         n_steps: step size for multi-step learning. This corresponds to TD(N).
         gamma: discounted factor. If ``n_steps=1``, this value does not make
@@ -24,7 +21,6 @@ class StepCollector:
 
     """
 
-    _transition_buffer: TransitionBuffer
     _transition_factory: TransitionFactory
     _episode_manager: EpisodeManager
     _n_steps: int
@@ -33,13 +29,11 @@ class StepCollector:
     def __init__(
         self,
         episode_manager: EpisodeManager,
-        transition_buffer: TransitionBuffer,
         transition_factory: TransitionFactory,
         n_steps: int = 1,
         gamma: float = 0.99,
     ):
         self._episode_manager = episode_manager
-        self._transition_buffer = transition_buffer
         self._transition_factory = transition_factory
         self._n_steps = n_steps
         self._gamma = gamma
@@ -68,7 +62,7 @@ class StepCollector:
             reward=reward,
             terminal=terminal,
         )
-        step = self._episode_manager.append(partial_step)
+        step = self._episode_manager.append_step(partial_step)
 
         if self._episode_manager.active_episode.size() > self._n_steps:
             last_step = self._episode_manager.active_episode.get_prev(
@@ -82,7 +76,7 @@ class StepCollector:
                 duration=self._n_steps,
                 gamma=self._gamma,
             )
-            self._append_transition(transition)
+            self._episode_manager.append_transition(transition)
 
         if terminal:
             # consume remaining steps
@@ -98,7 +92,7 @@ class StepCollector:
                     duration=i + 1,
                     gamma=self._gamma,
                 )
-                self._append_transition(transition)
+                self._episode_manager.append_transition(transition)
 
         if terminal or timeout:
             self.clip_episode()
@@ -111,11 +105,6 @@ class StepCollector:
 
         """
         self._episode_manager.clip_episode()
-
-    def _append_transition(self, transition: LazyTransition) -> None:
-        dropped_transition = self._transition_buffer.append(transition)
-        if dropped_transition:
-            self._episode_manager.drop_step(dropped_transition.curr_idx)
 
     @property
     def episode_manager(self) -> EpisodeManager:

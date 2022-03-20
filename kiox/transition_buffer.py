@@ -59,15 +59,6 @@ class TransitionBuffer(Protocol):
         """
         raise NotImplementedError
 
-    def copy_from(self, transition_buffer: "TransitionBuffer") -> None:
-        """Copies transitions from another TransitionBuffer.
-
-        Args:
-            transition_buffer: source TransitionBuffer object.
-
-        """
-        raise NotImplementedError
-
     @property
     def transitions(self) -> Sequence[LazyTransition]:
         raise NotImplementedError
@@ -100,10 +91,6 @@ class UnlimitedTransitionBuffer(TransitionBuffer):
 
     def size(self) -> int:
         return len(self._buffer)
-
-    def copy_from(self, transition_buffer: TransitionBuffer) -> None:
-        for i in range(transition_buffer.size()):
-            self.append(transition_buffer.get_by_index(i))
 
     @property
     def transitions(self) -> Sequence[LazyTransition]:
@@ -147,10 +134,6 @@ class FIFOTransitionBuffer(TransitionBuffer):
 
     def size(self) -> int:
         return len(self._buffer)
-
-    def copy_from(self, transition_buffer: TransitionBuffer) -> None:
-        for i in range(transition_buffer.size()):
-            self.append(transition_buffer.get_by_index(i))
 
     @property
     def transitions(self) -> Sequence[LazyTransition]:

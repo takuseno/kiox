@@ -3,6 +3,8 @@ from typing import Dict, List, Optional, Sequence
 import numpy as np
 
 from .step import PartialStep, Step, StepBuffer
+from .transition import LazyTransition
+from .transition_buffer import TransitionBuffer
 
 
 class Episode:
@@ -12,24 +14,31 @@ class Episode:
 
     Args:
         step_buffer: StepBuffer object.
+        transition_buffer: TransitionBuffer object.
 
     """
 
-    _buffer: StepBuffer
+    _step_buffer: StepBuffer
+    _transition_buffer: TransitionBuffer
+    _transitions: List[LazyTransition]
     _idx_list: List[int]
     _prev_idx: Dict[int, int]
     _next_idx: Dict[int, int]
     _prev_step: Optional[Step]
 
-    def __init__(self, step_buffer: StepBuffer) -> None:
-        self._buffer = step_buffer
+    def __init__(
+        self, step_buffer: StepBuffer, transition_buffer: TransitionBuffer
+    ) -> None:
+        self._step_buffer = step_buffer
+        self._transition_buffer = transition_buffer
+        self._transitions = []
         self._idx_list = []
         self._prev_idx = {}
         self._next_idx = {}
         self._prev_step = None
 
-    def append(self, partial_step: PartialStep) -> Step:
-        """Appends step.
+    def append_step(self, partial_step: PartialStep) -> Step:
+        """Creates and stores Step object from PartialStep.
 
         Args:
             partial_step: PartialStep object.
@@ -38,13 +47,28 @@ class Episode:
             Step object.
 
         """
-        step = self._buffer.append(partial_step)
+        step = self._step_buffer.append(partial_step)
         self._idx_list.append(step.idx)
         if self._prev_step:
             self._prev_idx[step.idx] = self._prev_step.idx
             self._next_idx[self._prev_step.idx] = step.idx
         self._prev_step = step
         return step
+
+    def append_transition(
+        self, transition: LazyTransition
+    ) -> Optional[LazyTransition]:
+        """Appends LazyTransition object.
+
+        Args:
+            transition: LazyTransition object.
+
+        Returns:
+            LazyTransition object dropped by TransitionBuffer.
+
+        """
+        self._transitions.append(transition)
+        return self._transition_buffer.append(transition)
 
     def get(self, idx: int) -> Step:
         """Returns step by specified idx.
@@ -56,7 +80,7 @@ class Episode:
             Step object.
 
         """
-        return self._buffer.get(idx)
+        return self._step_buffer.get(idx)
 
     def get_by_index(self, index: int) -> Step:
         """Returns step by specified index.
@@ -68,7 +92,7 @@ class Episode:
             Step object.
 
         """
-        return self._buffer.get(self._idx_list[index])
+        return self._step_buffer.get(self._idx_list[index])
 
     def get_next(self, idx: int, duration: int = 1) -> Optional[Step]:
         """Returns step ``duration`` steps ahead from ``idx``.
@@ -154,7 +178,11 @@ class Episode:
 
     @property
     def steps(self) -> Sequence[Step]:
-        return [self._buffer.get(idx) for idx in self._idx_list]
+        return [self._step_buffer.get(idx) for idx in self._idx_list]
+
+    @property
+    def transitions(self) -> Sequence[LazyTransition]:
+        return self._transitions
 
 
 class EpisodeManager:
@@ -164,21 +192,26 @@ class EpisodeManager:
 
     Args:
         step_buffer: StepBuffer object.
+        transition_buffer: TransitionBuffer object.
 
     """
 
     _step_buffer: StepBuffer
+    _transition_buffer: TransitionBuffer
     _episodes: List[Episode]
-    _step_to_episode: Dict[int, Episode]
-    _dropped_step: Dict[Episode, List[int]]
+    _transition_to_episode: Dict[int, Episode]
+    _dropped_transitions: Dict[Episode, List[LazyTransition]]
 
-    def __init__(self, step_buffer: StepBuffer) -> None:
+    def __init__(
+        self, step_buffer: StepBuffer, transition_buffer: TransitionBuffer
+    ) -> None:
         self._step_buffer = step_buffer
-        self._episodes = [Episode(step_buffer)]
-        self._step_to_episode = {}
-        self._dropped_step = {}
+        self._transition_buffer = transition_buffer
+        self._episodes = [Episode(step_buffer, transition_buffer)]
+        self._transition_to_episode = {}
+        self._dropped_transitions = {}
 
-    def append(self, partial_step: PartialStep) -> Step:
+    def append_step(self, partial_step: PartialStep) -> Step:
         """Appends step to active episode.
 
         Args:
@@ -188,9 +221,38 @@ class EpisodeManager:
             Step object.
 
         """
-        step = self.active_episode.append(partial_step)
-        self._step_to_episode[step.idx] = self.active_episode
-        return step
+        return self.active_episode.append_step(partial_step)
+
+    def append_transition(self, transition: LazyTransition) -> None:
+        """Appends LazyTransition object.
+
+        If all transitions are dropped from an episode, the episode and
+        included steps will be removed.
+
+        Args:
+            transition: LazyTransition object.
+
+        """
+        self._transition_to_episode[id(transition)] = self.active_episode
+        dropped_transition = self.active_episode.append_transition(transition)
+        if dropped_transition:
+            episode = self._transition_to_episode[id(dropped_transition)]
+
+            if episode not in self._dropped_transitions:
+                self._dropped_transitions[episode] = []
+
+            # record what transition has been removed
+            self._dropped_transitions[episode].append(dropped_transition)
+            del self._transition_to_episode[id(dropped_transition)]
+
+            # remove steps and episode
+            if len(self._dropped_transitions[episode]) == len(
+                episode.transitions
+            ):
+                del self._dropped_transitions[episode]
+                self._episodes.pop(self._episodes.index(episode))
+                for step in episode.steps:
+                    self._step_buffer.drop(step.idx)
 
     def get_step_by_idx(self, idx: int) -> Step:
         """Returns step by specified ``idx`.
@@ -202,19 +264,7 @@ class EpisodeManager:
             Step object.
 
         """
-        return self._step_to_episode[idx].get(idx)
-
-    def get_episode_by_step_idx(self, idx: int) -> Episode:
-        """Returns episode including step of ``idx``.
-
-        Args:
-            idx: step idx.
-
-        Returns:
-            Episode object.
-
-        """
-        return self._step_to_episode[idx]
+        return self._step_buffer.get(idx)
 
     def clip_episode(self) -> None:
         """Clips active episode.
@@ -223,51 +273,9 @@ class EpisodeManager:
         terminated.
 
         """
-        self._episodes.append(Episode(self._step_buffer))
-
-    def drop_step(self, idx: int) -> None:
-        """Virtually drops step by specified ``idx``.
-
-        This method does not actually drop the step until all steps are dropped
-        from an episode.
-
-        Args:
-            idx: step idx.
-
-        """
-        # get corresponding episode
-        episode = self.get_episode_by_step_idx(idx)
-
-        if episode not in self._dropped_step:
-            self._dropped_step[episode] = []
-        self._dropped_step[episode].append(idx)
-
-        # drop episode if necessary
-        if len(self._dropped_step[episode]) == episode.size():
-            assert episode is not self.active_episode
-
-            # drop from StepBuffer and step-to-episode mapping
-            for step in episode.steps:
-                del self._step_to_episode[step.idx]
-                self._step_buffer.drop(step.idx)
-
-            # drop from dropped mapping
-            del self._dropped_step[episode]
-
-            # drop episode
-            self._episodes.pop(self._episodes.index(episode))
-
-    def copy_from(self, episode_manager: "EpisodeManager") -> None:
-        """Copes steps from another EpisodeManager.
-
-        Args:
-            episode_manager: source episodes.
-
-        """
-        for episode in episode_manager.episodes:
-            for step in episode.steps:
-                self.append(step.to_partial_step())
-            self.clip_episode()
+        self._episodes.append(
+            Episode(self._step_buffer, self._transition_buffer)
+        )
 
     def get_total_step_size(self) -> int:
         """Returns total step size.

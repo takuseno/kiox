@@ -10,12 +10,11 @@ from kiox.transition_factory import SimpleTransitionFactory
 
 @pytest.mark.parametrize("n_steps", [1, 3])
 def test_step_collector(n_steps):
-    episode_manager = EpisodeManager(StepBuffer())
     transition_buffer = UnlimitedTransitionBuffer()
+    episode_manager = EpisodeManager(StepBuffer(), transition_buffer)
     transition_factory = SimpleTransitionFactory()
     step_collector = StepCollector(
         episode_manager=episode_manager,
-        transition_buffer=transition_buffer,
         transition_factory=transition_factory,
         n_steps=n_steps,
     )

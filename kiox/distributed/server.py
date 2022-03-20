@@ -108,9 +108,11 @@ class KioxStepServiceServicer(StepServiceServicer):  # type: ignore
 
         """
         assert rollout_id not in self._step_collectors
+        episode_manager = EpisodeManager(
+            step_buffer=step_buffer, transition_buffer=self._transition_buffer
+        )
         self._step_collectors[rollout_id] = StepCollector(
-            episode_manager=EpisodeManager(step_buffer),
-            transition_buffer=self._transition_buffer,
+            episode_manager=episode_manager,
             transition_factory=self._transition_factory,
             n_steps=self._n_steps,
             gamma=self._gamma,
